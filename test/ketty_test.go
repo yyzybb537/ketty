@@ -98,13 +98,13 @@ func Benchmark_Grpc(b *testing.B) {
 	bStartClient(b, grpcUrl)
 }
 
-//func Benchmark_Http(b *testing.B) {
-	//ketty.SetLog(new(kettyLog.FakeLog))
-	//bStartClient(b, httpUrl)
-//}
-//
-//func Benchmark_Https(b *testing.B) {
-	//ketty.SetLog(new(kettyLog.FakeLog))
-	//bStartClient(b, httpsUrl)
-//}
-//
+func Benchmark_Http(b *testing.B) {
+	ketty.SetLog(new(kettyLog.FakeLog))
+	bStartClient(b, httpUrl)
+}
+
+func Benchmark_Https(b *testing.B) {
+	ketty.SetLog(new(kettyLog.FakeLog))
+	bStartClient(b, httpsUrl)
+}
+

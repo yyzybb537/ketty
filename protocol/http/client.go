@@ -18,11 +18,17 @@ type HttpClient struct {
 	ketty.AopList
 
 	url ketty.Url
+	tr *http.Transport
+	client *http.Client
 }
 
 func newHttpClient(url ketty.Url) (*HttpClient, error) {
 	c := new(HttpClient)
 	c.url = url
+	c.tr = &http.Transport{
+        TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
+    }
+    c.client = &http.Client{Transport: c.tr}
 	return c, nil
 }
 
@@ -38,10 +44,6 @@ func (this *HttpClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, 
 	
 	fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method)
 	fullUrl := this.url.ToString() + fullMethodName
-	tr := &http.Transport{
-        TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
-    }
-    client := &http.Client{Transport: tr}
 	metadata := map[string]string{}
 
 	aopList := ketty.GetAop(ctx)
@@ -97,7 +99,7 @@ func (this *HttpClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, 
 		httpRequest.Header.Set("KettyMetaData", string(metadataBuf))
 	}
 
-	httpResponse, err := client.Do(httpRequest)
+	httpResponse, err := this.client.Do(httpRequest)
 	if err != nil {
 		return errors.WithStack(err)
     }
