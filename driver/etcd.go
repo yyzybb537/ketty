@@ -9,6 +9,10 @@ import (
 type EtcdDriver struct {
 }
 
+func init() {
+	ketty.RegDriver("etcd", new(EtcdDriver))
+}
+
 func (this *EtcdDriver) DefaultPort() int {
 	return 2379
 }
