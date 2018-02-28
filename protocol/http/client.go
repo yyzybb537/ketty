@@ -2,6 +2,7 @@ package http_proto
 
 import (
 	"github.com/yyzybb537/ketty"
+	kettyContext "github.com/yyzybb537/ketty/context"
 	"fmt"
 	"strings"
 	"net/http"
@@ -36,10 +37,17 @@ func (this *HttpClient) Close() {
 	
 }
 
-func (this *HttpClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, method string, req, rsp interface{}) error {
+func (this *HttpClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, method string, req, rsp interface{}) (error) {
+	ctx = this.invoke(ctx, handle, method, req, rsp)
+	return ctx.Err()
+}
+
+func (this *HttpClient) invoke(inCtx context.Context, handle ketty.ServiceHandle, method string, req, rsp interface{}) (ctx context.Context) {
+	ctx = inCtx
 	buf, err := proto.Marshal(req.(proto.Message))
 	if err != nil {
-		return errors.WithStack(err)
+		ctx = kettyContext.WithError(ctx, errors.WithStack(err))
+		return
 	}
 	
 	fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method)
@@ -55,6 +63,9 @@ func (this *HttpClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, 
 			caller, ok := aop.(ketty.ClientTransportMetaDataAop)
 			if ok {
 				ctx = caller.ClientSendMetaData(ctx, metadata)
+				if ctx.Err() != nil {
+					return 
+				}
 			}
 		}
 
@@ -62,6 +73,9 @@ func (this *HttpClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, 
 			caller, ok := aop.(ketty.BeforeClientInvokeAop)
 			if ok {
 				ctx = caller.BeforeClientInvoke(ctx, req)
+				if ctx.Err() != nil {
+					return 
+				}
 			}
 		}
 
@@ -72,28 +86,29 @@ func (this *HttpClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, 
 					caller.ClientCleanup(ctx)
 				}
 			}
-        }()
+		}()
 
-		defer func() {
-			for _, aop := range aopList {
-				caller, ok := aop.(ketty.AfterClientInvokeAop)
-				if ok {
-					ctx = caller.AfterClientInvoke(ctx, req, rsp, err)
-				}
+		for i, _ := range aopList {
+			aop := aopList[len(aopList) - i - 1]
+			caller, ok := aop.(ketty.AfterClientInvokeAop)
+			if ok {
+				defer caller.AfterClientInvoke(&ctx, req, rsp)
 			}
-        }()
+		}
 	}
 
 	httpRequest, err := http.NewRequest("POST", fullUrl, bytes.NewBuffer(buf))
 	if err != nil {
-		return errors.WithStack(err)
+		ctx = kettyContext.WithError(ctx, errors.WithStack(err))
+		return
     }
 	httpRequest.Header.Set("Content-Type", "binary/protobuf")
 	if len(metadata) > 0 {
 		var metadataBuf []byte
 		metadataBuf, err = json.Marshal(metadata)
 		if err != nil {
-			return errors.WithStack(err)
+			ctx = kettyContext.WithError(ctx, errors.WithStack(err))
+			return
 		}
 
 		httpRequest.Header.Set("KettyMetaData", string(metadataBuf))
@@ -101,23 +116,27 @@ func (this *HttpClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, 
 
 	httpResponse, err := this.client.Do(httpRequest)
 	if err != nil {
-		return errors.WithStack(err)
+		ctx = kettyContext.WithError(ctx, errors.WithStack(err))
+		return
     }
 	defer httpResponse.Body.Close()
 
 	if httpResponse.StatusCode != 200 {
-		return errors.Errorf("status:%d", httpResponse.StatusCode)
+		ctx = kettyContext.WithError(ctx, errors.Errorf("status:%d", httpResponse.StatusCode))
+		return 
 	}
 
 	buf, err = ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
-		return errors.WithStack(err)
+		ctx = kettyContext.WithError(ctx, errors.WithStack(err))
+		return
 	}
 
 	err = proto.Unmarshal(buf, rsp.(proto.Message))
 	if err != nil {
-		return errors.WithStack(err)
+		ctx = kettyContext.WithError(ctx, errors.WithStack(err))
+		return
 	}
 
-	return nil
+	return
 }

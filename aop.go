@@ -11,7 +11,7 @@ type BeforeClientInvokeAop interface {
 }
 
 type AfterClientInvokeAop interface {
-	AfterClientInvoke(ctx context.Context, req, rsp interface{}, err error) context.Context
+	AfterClientInvoke(pCtx *context.Context, req, rsp interface{})
 }
 
 type ClientInvokeCleanupAop interface {
@@ -24,7 +24,7 @@ type BeforeServerInvokeAop interface {
 }
 
 type AfterServerInvokeAop interface {
-	AfterServerInvoke(ctx context.Context, req, rsp interface{}, err error) context.Context
+	AfterServerInvoke(pCtx *context.Context, req, rsp interface{})
 }
 
 type ServerInvokeCleanupAop interface {
@@ -66,8 +66,9 @@ func DefaultAop() *AopList {
 }
 
 func init() {
-	DefaultAop().AddAop(new(aop.TraceAop))
+	DefaultAop().AddAop(new(aop.ExceptionAop))
 	DefaultAop().AddAop(new(aop.CostAop))
+	DefaultAop().AddAop(new(aop.TraceAop))
 	DefaultAop().AddAop(new(aop.LoggerAop))
 }
 

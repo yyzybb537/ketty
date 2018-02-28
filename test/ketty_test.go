@@ -18,6 +18,14 @@ func (this *EchoServer) Echo(ctx context.Context, req *echo.Req) (*echo.Rsp, err
 	return &echo.Rsp{Val:req.Val}, nil
 }
 
+type ExceptionServer struct {
+}
+
+func (this *ExceptionServer) Echo(ctx context.Context, req *echo.Req) (*echo.Rsp, error) {
+	ketty.GetLog().Infof("panic")
+	panic("Echo_Panic")
+	return &echo.Rsp{Val:req.Val}, nil
+}
 
 func startServer(t *testing.T, sUrl string) {
 	server, err := ketty.Listen(sUrl, "")
@@ -33,7 +41,20 @@ func startServer(t *testing.T, sUrl string) {
 	}
 }
 
-func startClient(t *testing.T, sUrl string) {
+func startExceptionServer(t *testing.T, sUrl string) {
+	server, err := ketty.Listen(sUrl, "")
+	if err != nil {
+		t.Fatalf("Listen error:%s", err.Error())
+	}
+
+	server.RegisterMethod(echo.EchoServiceHandle, &ExceptionServer{})
+
+	err = server.Serve()
+	if err != nil {
+		t.Fatalf("Serve error:%s", err.Error())
+	}
+}
+func startClient(t *testing.T, sUrl string, exceptError bool) {
 	client, err := ketty.Dial(sUrl, "")
 	if err != nil {
 		t.Fatalf("Dial error:%s", err.Error())
@@ -42,11 +63,17 @@ func startClient(t *testing.T, sUrl string) {
 	req := &echo.Req{ Val : 123 }
 	stub := echo.NewKettyEchoServiceClient(client)
 	rsp, err := stub.Echo(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Invoke error:%+v", err)
-	}
+	if exceptError {
+		if err == nil {
+			t.Fatalf("Invoke not error")
+        }
+	} else {
+		if err != nil {
+			t.Fatalf("Invoke error:%+v", err)
+		}
 
-	t.Logf("Echo Val:%d", rsp.Val)
+		t.Logf("Echo Val:%d", rsp.Val)
+	}
 }
 
 var clientMap = map[string]ketty.Client{}
@@ -89,8 +116,18 @@ func TestGrpc(t *testing.T) {
 		t.Logf("Do url:%s", sUrl)
 		startServer(t, sUrl)
 		time.Sleep(time.Millisecond * 100)
-		startClient(t, sUrl)
+		startClient(t, sUrl, false)
 	}
+}
+
+func TestException(t *testing.T) {
+	kettyHttp.InitTLS("cert.pem", "key.pem")
+	ketty.SetLog(new(kettyLog.StdLog))
+	sUrl := "grpc://127.0.0.1:33008"
+	t.Logf("Do url:%s", sUrl)
+	startExceptionServer(t, sUrl)
+	time.Sleep(time.Millisecond * 100)
+	startClient(t, sUrl, true)
 }
 
 func Benchmark_Grpc(b *testing.B) {

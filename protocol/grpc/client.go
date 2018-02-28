@@ -2,6 +2,7 @@ package grpc_proto
 
 import (
 	"github.com/yyzybb537/ketty"
+	kettyContext "github.com/yyzybb537/ketty/context"
 	"fmt"
 	"google.golang.org/grpc"
 	"golang.org/x/net/context"
@@ -34,7 +35,14 @@ func (this *GrpcClient) Close() {
 	this.Impl.Close()
 }
 
-func (this *GrpcClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, method string, req, rsp interface{}) (err error) {
+func (this *GrpcClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, method string, req, rsp interface{}) (error) {
+	ctx = this.invoke(ctx, handle, method, req, rsp)
+	return ctx.Err()
+}
+
+func (this *GrpcClient) invoke(inCtx context.Context, handle ketty.ServiceHandle, method string, req, rsp interface{}) (ctx context.Context) {
+	var err error
+	ctx = inCtx
 	fullMethodName := fmt.Sprintf("/%s/%s", handle.ServiceName(), method)
 	aopList := ketty.GetAop(ctx)
 	if aopList != nil {
@@ -47,6 +55,9 @@ func (this *GrpcClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, 
 			caller, ok := aop.(ketty.ClientTransportMetaDataAop)
 			if ok {
 				ctx = caller.ClientSendMetaData(ctx, metadata)
+				if ctx.Err() != nil {
+					return 
+				}
 			}
 		}
 
@@ -54,6 +65,9 @@ func (this *GrpcClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, 
 			caller, ok := aop.(ketty.BeforeClientInvokeAop)
 			if ok {
 				ctx = caller.BeforeClientInvoke(ctx, req)
+				if ctx.Err() != nil {
+					return 
+				}
 			}
 		}
 
@@ -64,18 +78,22 @@ func (this *GrpcClient) Invoke(ctx context.Context, handle ketty.ServiceHandle, 
 					caller.ClientCleanup(ctx)
 				}
 			}
-        }()
+		}()
 
-		defer func() {
-			for _, aop := range aopList {
-				caller, ok := aop.(ketty.AfterClientInvokeAop)
-				if ok {
-					ctx = caller.AfterClientInvoke(ctx, req, rsp, err)
-				}
+		for i, _ := range aopList {
+			aop := aopList[len(aopList) - i - 1]
+			caller, ok := aop.(ketty.AfterClientInvokeAop)
+			if ok {
+				defer caller.AfterClientInvoke(&ctx, req, rsp)
 			}
-        }()
+		}
 	}
 
-	return grpc.Invoke(ctx, fullMethodName, req, rsp, this.Impl)
+	err = grpc.Invoke(ctx, fullMethodName, req, rsp, this.Impl)
+	if err != nil {
+		ctx = kettyContext.WithError(ctx, err)
+	}
+
+	return
 }
 

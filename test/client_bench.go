@@ -53,7 +53,7 @@ var nConnections int
 
 func init() {
 	flag.IntVar(&urlType, "url", 2, "0:http, 1:https, 2:grpc")
-	flag.IntVar(&nConnections, "c", 1, "number of connections")
+	flag.IntVar(&nConnections, "c", 100, "number of connections")
 	flag.Parse()
 }
 

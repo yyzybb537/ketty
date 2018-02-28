@@ -1,10 +1,11 @@
 package grpc_proto
 
 import (
+	"github.com/yyzybb537/ketty"
+	kettyContext "github.com/yyzybb537/ketty/context"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	md "google.golang.org/grpc/metadata"
-	"github.com/yyzybb537/ketty"
 	"net"
 )
 
@@ -63,14 +64,24 @@ func (this *GrpcServer) Serve() error {
 
 func (this *GrpcServer) serverIntercept() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler) (rsp interface{}, err error) {
+		handler grpc.UnaryHandler) (rsp interface{}, err error) {
 		rsp, err = this.unaryServerInterceptor(ctx, req, info, handler)
 		return
 	}
 }
 
 func (this *GrpcServer) unaryServerInterceptor(ctx context.Context, req interface{},
-info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (rsp interface{}, err error) {
+	info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (rsp interface{}, err error) {
+	rsp, ctx = this.unaryServerInterceptorWithContext(ctx, req, info, handler)
+	err = ctx.Err()
+	//ketty.GetLog().Infof("unaryServerInterceptor error:%v", err)
+	return
+}
+
+func (this *GrpcServer) unaryServerInterceptorWithContext(inCtx context.Context, req interface{},
+	info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (rsp interface{}, ctx context.Context) {
+	var err error
+	ctx = inCtx
 	aopList := this.GetAop()
 	if aopList != nil {
 		ctx = context.WithValue(ctx, "method", info.FullMethod)
@@ -83,7 +94,7 @@ info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (rsp interface{}, err err
 			for k, v := range grpcMD {
 				if len(v) > 0 {
 					metadata[k] = v[0]
-                }
+				}
 			}
 		}
 
@@ -91,6 +102,9 @@ info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (rsp interface{}, err err
 			caller, ok := aop.(ketty.ServerTransportMetaDataAop)
 			if ok {
 				ctx = caller.ServerRecvMetaData(ctx, metadata)
+				if ctx.Err() != nil {
+					return
+				}
 			}
 		}
 
@@ -98,6 +112,9 @@ info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (rsp interface{}, err err
 			caller, ok := aop.(ketty.BeforeServerInvokeAop)
 			if ok {
 				ctx = caller.BeforeServerInvoke(ctx, req)
+				if ctx.Err() != nil {
+					return
+				}
 			}
 		}
 
@@ -110,19 +127,19 @@ info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (rsp interface{}, err err
 			}
 		}()
 
-		defer func() {
-			for _, aop := range aopList {
-				caller, ok := aop.(ketty.AfterServerInvokeAop)
-				if ok {
-					ctx = caller.AfterServerInvoke(ctx, req, rsp, err)
-				}
+		for i, _ := range aopList {
+			aop := aopList[len(aopList) - i - 1]
+			caller, ok := aop.(ketty.AfterServerInvokeAop)
+			if ok {
+				defer caller.AfterServerInvoke(&ctx, req, rsp)
 			}
-		}()
+		}
 	}
 
 	rsp, err = handler(ctx, req)
 	if err != nil {
-		return rsp, err
+		ctx = kettyContext.WithError(ctx, err)
+		return
 	}
 
 	return
