@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 	"golang.org/x/net/context"
+	"github.com/yyzybb537/ketty/common"
 )
 
 type UniqMap map[string]bool
@@ -28,6 +29,9 @@ type Clients struct {
 	onClose   []func()
 	closed    bool
 
+	// blocking wait queue
+	blockingWait *common.BlockingWait
+
 	// root reference
 	root	  *Clients
 }
@@ -37,8 +41,10 @@ func newClients(url Url, balancer Balancer, root *Clients) *Clients {
 	c := &Clients{
 		url : url,
 		balancer : balancer,
+		addrs : map[string]Url{},
 		q : make(chan interface{}),
 		closed : false,
+		blockingWait : common.NewBlockingWait(),
 		root : root,
     }
 	if c.root == nil {
@@ -49,6 +55,7 @@ func newClients(url Url, balancer Balancer, root *Clients) *Clients {
 }
 
 func (this *Clients) dial() error {
+	//GetLog().Debugf("dial(%s)", this.url.ToString())
 	proto, err := GetProtocol(this.url.Protocol)
 	if err == nil {
 		return this.dialProtocol(proto)
@@ -84,14 +91,14 @@ func (this *Clients) dialDriver(driver Driver) error {
 		for {
 			up := []Url{}
 			down := []Url{}
-			end := false
+			readOk := true
 			select {
-			case up, end = <-upC:
+			case up, readOk = <-upC:
 				break
-			case down, end = <-downC:
+			case down, readOk = <-downC:
 				break
 			}
-			if end {
+			if !readOk {
 				break
 			}
 
@@ -119,7 +126,7 @@ func (this *Clients) dialDriver(driver Driver) error {
 				key := url.ToString()
 				this.addrMtx.Lock()
 				var exists bool
-				if url, exists = this.addrs[key]; exists {
+				if _, exists = this.addrs[key]; exists {
 					this.addrMtx.Unlock()
 					continue
                 }
@@ -130,9 +137,10 @@ func (this *Clients) dialDriver(driver Driver) error {
 
 				// connect
 				err = client.dial()
-				if err != nil {
+				if err == nil {
 					down := this.balancer.Up(url)
 					client.onClose = append(client.onClose, down)
+					this.blockingWait.Notify()
 					continue
                 }
 				
@@ -142,6 +150,7 @@ func (this *Clients) dialDriver(driver Driver) error {
 					if err != nil {
 						down := this.balancer.Up(url)
 						client.onClose = append(client.onClose, down)
+						this.blockingWait.Notify()
 					}
 				}()
 			}
@@ -189,7 +198,11 @@ func (this *Clients) Close() {
 func (this *Clients) Invoke(ctx context.Context, handle ServiceHandle, method string, req, rsp interface{}) error {
 	url, put, err := this.balancer.Get(ctx)
 	if err != nil {
-		return err
+		this.blockingWait.Wait()
+		url, put, err = this.balancer.Get(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	if put != nil {
 		defer put()

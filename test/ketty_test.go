@@ -5,6 +5,7 @@ import (
 	echo "github.com/yyzybb537/ketty/test/test_pb"
 	"github.com/yyzybb537/ketty"
 	kettyLog "github.com/yyzybb537/ketty/log"
+	_ "github.com/yyzybb537/ketty/driver"
 	_ "github.com/yyzybb537/ketty/protocol/grpc"
 	kettyHttp "github.com/yyzybb537/ketty/protocol/http"
 	"time"
@@ -27,8 +28,8 @@ func (this *ExceptionServer) Echo(ctx context.Context, req *echo.Req) (*echo.Rsp
 	return &echo.Rsp{Val:req.Val}, nil
 }
 
-func startServer(t *testing.T, sUrl string) {
-	server, err := ketty.Listen(sUrl, "")
+func startServer(t *testing.T, sUrl string, driverUrl string) {
+	server, err := ketty.Listen(sUrl, driverUrl)
 	if err != nil {
 		t.Fatalf("Listen error:%s", err.Error())
 	}
@@ -102,6 +103,7 @@ func bStartClient(b *testing.B, sUrl string) {
 var httpUrl = "http://127.0.0.1:8091"
 var httpsUrl = "https://127.0.0.1:3050"
 var grpcUrl = "grpc://127.0.0.1:8090"
+var etcdUrl = "grpc://127.0.0.1:8090"
 var urls = []string{
 	//"http://127.0.0.1",
 	httpUrl,
@@ -114,11 +116,23 @@ func TestGrpc(t *testing.T) {
 	ketty.SetLog(new(kettyLog.StdLog))
 	for _, sUrl := range urls {
 		t.Logf("Do url:%s", sUrl)
-		startServer(t, sUrl)
+		startServer(t, sUrl, "")
 		time.Sleep(time.Millisecond * 100)
 		startClient(t, sUrl, false)
 	}
 }
+
+func TestEtcd(t *testing.T) {
+	kettyHttp.InitTLS("cert.pem", "key.pem")
+	ketty.SetLog(new(kettyLog.StdLog))
+	sUrl := "grpc://127.0.0.1:33009"
+	t.Logf("Do url:%s", sUrl)
+	driverUrl := "etcd://127.0.0.1:2379/ketty_test"
+	startServer(t, sUrl, driverUrl)
+	time.Sleep(time.Millisecond * 100)
+	startClient(t, driverUrl, false)
+}
+
 
 func TestException(t *testing.T) {
 	kettyHttp.InitTLS("cert.pem", "key.pem")

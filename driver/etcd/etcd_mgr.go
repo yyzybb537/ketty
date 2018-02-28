@@ -13,9 +13,14 @@ import (
 
 const defaultTTL = 12
 
-type WatchCallback func(*Session, string)
-type WatchMap map[WatchHandler]WatchCallback
-type WatchHandler uint64
+type WatchCallback func(*Session, string, WatchHandler)
+type WatchHandlerT struct {
+	id uint64
+	cb WatchCallback
+	MetaData interface{}
+}
+type WatchHandler *WatchHandlerT
+type WatchMap map[uint64]WatchHandler
 
 type Session struct {
 	client  etcd.Client
@@ -23,7 +28,7 @@ type Session struct {
 	address string
 	localIp string
 
-	watcherHandlerIndex WatchHandler
+	watcherHandlerIndex uint64
 	watchers            map[string]WatchMap
 	mutex               sync.RWMutex
 }
@@ -190,7 +195,7 @@ func (this *Session) Del(path string, isDir bool, isRecursive bool) (err error) 
 	return
 }
 
-func (this *Session) WatchRecursive(path string, cb WatchCallback) (watcherHandlerIndex WatchHandler) {
+func (this *Session) WatchRecursive(path string, cb WatchCallback) (watcherHandler WatchHandler) {
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
 	m, exists := this.watchers[path]
@@ -222,8 +227,8 @@ func (this *Session) WatchRecursive(path string, cb WatchCallback) (watcherHandl
 
 				ketty.GetLog().Infof("Watcher begin trigger path=%s. callback len(m)=%d. Index=%d. Err:%+v", path, len(m), index, err)
 
-				for _, cb := range m {
-					cb(this, path)
+				for _, handler := range m {
+					handler.cb(this, path, handler)
 				}
 
 				ketty.GetLog().Infof("Watcher end trigger path=%s. callback len(m)=%d", path, len(m))
@@ -231,11 +236,15 @@ func (this *Session) WatchRecursive(path string, cb WatchCallback) (watcherHandl
 		}()
 	}
 
-	watcherHandlerIndex = WatchHandler(atomic.AddUint64((*uint64)(&this.watcherHandlerIndex), 1))
+	watcherHandlerIndex := atomic.AddUint64((*uint64)(&this.watcherHandlerIndex), 1)
 	if watcherHandlerIndex == 0 {
-		watcherHandlerIndex = WatchHandler(atomic.AddUint64((*uint64)(&this.watcherHandlerIndex), 1))
+		watcherHandlerIndex = atomic.AddUint64((*uint64)(&this.watcherHandlerIndex), 1)
 	}
-	m[watcherHandlerIndex] = cb
+	watcherHandler = &WatchHandlerT{
+		id : watcherHandlerIndex,
+		cb : cb,
+	}
+	m[watcherHandlerIndex] = watcherHandler
 	return
 }
 
@@ -247,7 +256,7 @@ func (this *Session) UnWatch(path string, watcherHandler WatchHandler) {
 		return
 	}
 
-	delete(m, watcherHandler)
+	delete(m, watcherHandler.id)
 }
 
 type etcdMgr struct {
