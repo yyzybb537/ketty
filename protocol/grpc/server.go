@@ -5,6 +5,7 @@ import (
 	kettyContext "github.com/yyzybb537/ketty/context"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 	md "google.golang.org/grpc/metadata"
 	"net"
 )
@@ -72,6 +73,7 @@ func (this *GrpcServer) serverIntercept() grpc.UnaryServerInterceptor {
 
 func (this *GrpcServer) unaryServerInterceptor(ctx context.Context, req interface{},
 	info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (rsp interface{}, err error) {
+	//ketty.GetLog().Infof("unaryServerInterceptor ctx=%+v", ctx)
 	rsp, ctx = this.unaryServerInterceptorWithContext(ctx, req, info, handler)
 	err = ctx.Err()
 	//ketty.GetLog().Infof("unaryServerInterceptor error:%v", err)
@@ -85,7 +87,12 @@ func (this *GrpcServer) unaryServerInterceptorWithContext(inCtx context.Context,
 	aopList := this.GetAop()
 	if aopList != nil {
 		ctx = context.WithValue(ctx, "method", info.FullMethod)
-		ctx = context.WithValue(ctx, "remote", "") //TODO
+		p, ok := peer.FromContext(ctx)
+		if ok {
+			ctx = context.WithValue(ctx, "remote", p.Addr.String())
+		} else {
+			ctx = context.WithValue(ctx, "remote", "")
+		}
 		metadata := map[string]string{}
 
 		grpcMD, hasMetaData := md.FromIncomingContext(ctx)
