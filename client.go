@@ -4,10 +4,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-type ClientMethod interface {
-	init(client Client)
-}
-
 type Client interface {
 	AopListI
 
