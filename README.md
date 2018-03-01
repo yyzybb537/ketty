@@ -97,3 +97,16 @@ func main() {
         ketty.GetLog().Infof("Rsp: %d", rsp.Val)
 }
 ```
+
+### URL
+
+```
+// @sUrl:   protocol://ip[:port][,ip[:port]]/path                                  
+// E.g:                                                                            
+//    http://127.0.0.1:8030/path                                                   
+//    https://127.0.0.1:8030                                                     
+//    grpc://127.0.0.1:8030,127.0.0.1:8031                                         
+//                                                                                 
+// @sBalanceUrl:  driver://ip[:port][,ip[:port]]/path                            
+//    etcd://127.0.0.1:2379/path   
+```
