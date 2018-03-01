@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package test_pb;
+
+message Req {
+    int64 val = 1;
+}
+
+message Rsp {
+    int64 val = 1;
+}
+
+service EchoService {
+    rpc Echo(Req) returns(Rsp) {}
+}
+
