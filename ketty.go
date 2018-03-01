@@ -13,20 +13,37 @@ type Dummy interface{}
 type Client P.Client
 type Server P.Server
 
-// @主要组件
-//type Protocol interface {}
-//type Balancer interface {}
-//type Client interface {}
-//type Server interface {}
+// @目前支持的组件
+//1.Protocol
+//   grpc, http, https
+//2.Balancer
+//   robin
+//3.Driver for find service
+//   etcd
+//4.AOP
+//   cost, exception, logger, trace
+
+// @后续计划
+//1.Protocol
+//   none
+//2.Balancer
+//   conhash, random
+//3.Driver for find service
+//   zookeeper
+//* Driver mode:
+//   only-master, master-groups
+//4.AOP
+//   timeout, trace-timeout, statistics
+//5.Log
+//   glog or seelog
 
 // @sUrl:   protocol://ip[:port][,ip[:port]]/path
 // E.g:
 //    http://127.0.0.1:8030/path
 //    https://127.0.0.1:8030
-//    tcp://127.0.0.1:8030
 //    grpc://127.0.0.1:8030,127.0.0.1:8031
 //
-// @sBalanceUrl:  protocol://ip[:port][,ip[:port]]/path
+// @sBalanceUrl:  driver://ip[:port][,ip[:port]]/path
 //    etcd://127.0.0.1:2379/path
 func Listen(sUrl, sDriverUrl string) (server Server, err error) {
 	url, err := U.UrlFromString(sUrl)
