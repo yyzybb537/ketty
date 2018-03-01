@@ -1,16 +1,15 @@
-package ketty
+package driver
 
 import (
 	"fmt"
 	"strings"
+	U "github.com/yyzybb537/ketty/url"
 )
 
 type Driver interface {
-	DefaultPort() int
+	Watch(url U.Url) (up, down <-chan []U.Url, stop func(), err error)
 
-	Watch(url Url) (up, down <-chan []Url, stop func(), err error)
-
-	Register(url, value Url) (error)
+	Register(url, value U.Url) (error)
 }
 
 var drivers = make(map[string]Driver)

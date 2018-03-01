@@ -1,16 +1,15 @@
-package ketty
+package protocol
 
 import (
 	"fmt"
 	"strings"
+	U "github.com/yyzybb537/ketty/url"
 )
 
 type Protocol interface {
-	DefaultPort() int
+	CreateServer(url, driverUrl U.Url) (Server, error)
 
-	CreateServer(url, driverUrl Url) (Server, error)
-
-	Dial(url Url) (Client, error)
+	Dial(url U.Url) (Client, error)
 }
 
 var protocols = make(map[string]Protocol)

@@ -3,7 +3,7 @@ package etcd
 import (
 	etcd "github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
-	"github.com/yyzybb537/ketty"
+	"github.com/yyzybb537/ketty/log"
 	"net"
 	"strings"
 	"sync"
@@ -53,7 +53,7 @@ func (this *Session) GetLocalIp() string {
 
 	conn, err := net.Dial("tcp", remoteAddrs[0])
 	if err != nil {
-		ketty.GetLog().Errorf("net.Dial returns error:%s", err.Error())
+		log.GetLog().Errorf("net.Dial returns error:%s", err.Error())
 		return "127.0.0.1"
 	}
 
@@ -71,19 +71,19 @@ func (this *Session) CreateInOrder(dir, value string, outPath *string, ctx conte
 	}
 	for _, respNode := range resp.Node.Nodes {
 		if value == respNode.Value {
-			ketty.GetLog().Warningf("exist node %s in %s", value, respNode.Key)
+			log.GetLog().Warningf("exist node %s in %s", value, respNode.Key)
 			_, err = this.kapi.Delete(ctx, respNode.Key, &etcd.DeleteOptions{PrevValue: value})
 			if err != nil {
 				return
 			}
-			ketty.GetLog().Infof("delete node %s success", respNode.Key)
+			log.GetLog().Infof("delete node %s success", respNode.Key)
 		}
 	}
 	//create in order first time
 	createInOrder_opt := etcd.CreateInOrderOptions{TTL: time.Second * defaultTTL}
 	resp, err = this.kapi.CreateInOrder(ctx, dir, value, &createInOrder_opt)
 	if err != nil {
-		ketty.GetLog().Errorln("create etcd in order node error:", err)
+		log.GetLog().Errorln("create etcd in order node error:", err)
 		return
 	}
 	*outPath = resp.Node.Key
@@ -99,11 +99,11 @@ func (this *Session) CreateInOrder(dir, value string, outPath *string, ctx conte
 				refresh_opt := etcd.SetOptions{TTL: time.Second * defaultTTL, PrevValue: value, Refresh: true}
 				_, err := this.kapi.Set(context.Background(), *outPath, "", &refresh_opt)
 				if err != nil {
-					ketty.GetLog().Errorf("Refresh etcd error. address=%s path=%s error=%s", this.address, *outPath, err)
+					log.GetLog().Errorf("Refresh etcd error. address=%s path=%s error=%s", this.address, *outPath, err)
 					// set
 					resp, err = this.kapi.CreateInOrder(context.Background(), dir, value, &createInOrder_opt)
 					if err != nil {
-						ketty.GetLog().Errorln("reset etcd in order node error:", err)
+						log.GetLog().Errorln("reset etcd in order node error:", err)
 						interval = 2
 					}
 					*outPath = resp.Node.Key
@@ -121,7 +121,7 @@ func (this *Session) SetEphemeral(path, value string, ctx context.Context) (err 
 	set_opt := etcd.SetOptions{PrevExist: etcd.PrevIgnore, TTL: time.Second * defaultTTL}
 	_, err = this.kapi.Set(context.Background(), path, value, &set_opt)
 	if err != nil {
-		ketty.GetLog().Errorln("Set etcd ephemeral node error:", err)
+		log.GetLog().Errorln("Set etcd ephemeral node error:", err)
 		return
 	}
 
@@ -136,11 +136,11 @@ func (this *Session) SetEphemeral(path, value string, ctx context.Context) (err 
 				refresh_opt := etcd.SetOptions{PrevExist: etcd.PrevIgnore, TTL: time.Second * defaultTTL, PrevValue: "1", Refresh: true}
 				_, err := this.kapi.Set(context.Background(), path, "", &refresh_opt)
 				if err != nil {
-					ketty.GetLog().Errorf("Refresh etcd error. address=%s path=%s error=%s", this.address, path, err.Error())
+					log.GetLog().Errorf("Refresh etcd error. address=%s path=%s error=%s", this.address, path, err.Error())
 					// set
 					_, err := this.kapi.Set(context.Background(), path, value, &set_opt)
 					if err != nil {
-						ketty.GetLog().Errorln("Reset etcd ephemeral node error:", err)
+						log.GetLog().Errorln("Reset etcd ephemeral node error:", err)
 						interval = 2
 					}
 				} else {
@@ -205,9 +205,9 @@ func (this *Session) WatchRecursive(path string, cb WatchCallback) (watcherHandl
 		if err != nil && EtcdErrorCode(err) == etcd.ErrorCodeKeyNotFound {
 			err = this.Mkdir(path)
 			if err != nil {
-				ketty.GetLog().Errorf("Mkdir(%s) error:%v", path, err)
+				log.GetLog().Errorf("Mkdir(%s) error:%v", path, err)
 			} else {
-				ketty.GetLog().Infof("Mkdir(%s) in WatchRecursive", path)
+				log.GetLog().Infof("Mkdir(%s) in WatchRecursive", path)
 			}
 		}
 
@@ -225,13 +225,13 @@ func (this *Session) WatchRecursive(path string, cb WatchCallback) (watcherHandl
 					index = rsp.Index
 				}
 
-				ketty.GetLog().Infof("Watcher begin trigger path=%s. callback len(m)=%d. Index=%d. Err:%+v", path, len(m), index, err)
+				log.GetLog().Infof("Watcher begin trigger path=%s. callback len(m)=%d. Index=%d. Err:%+v", path, len(m), index, err)
 
 				for _, handler := range m {
 					handler.cb(this, path, handler)
 				}
 
-				ketty.GetLog().Infof("Watcher end trigger path=%s. callback len(m)=%d", path, len(m))
+				log.GetLog().Infof("Watcher end trigger path=%s. callback len(m)=%d", path, len(m))
 			}
 		}()
 	}

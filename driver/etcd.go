@@ -2,7 +2,8 @@ package driver
 
 import (
 	"golang.org/x/net/context"
-	"github.com/yyzybb537/ketty"
+	U "github.com/yyzybb537/ketty/url"
+	"github.com/yyzybb537/ketty/log"
 	"github.com/yyzybb537/ketty/driver/etcd"
 )
 
@@ -10,21 +11,18 @@ type EtcdDriver struct {
 }
 
 func init() {
-	ketty.RegDriver("etcd", new(EtcdDriver))
+	RegDriver("etcd", new(EtcdDriver))
+	U.RegDefaultPort("etcd", 2379)
 }
 
-func (this *EtcdDriver) DefaultPort() int {
-	return 2379
-}
-
-func (this *EtcdDriver) Watch(url ketty.Url) (up, down <-chan []ketty.Url, stop func(), err error) {
+func (this *EtcdDriver) Watch(url U.Url) (up, down <-chan []U.Url, stop func(), err error) {
 	sess, err := etcd.GetEtcdMgr().GetSession(url.SAddr)
 	if err != nil {
 		return
 	}
 
-	upC := make(chan []ketty.Url, 32)
-	downC := make(chan []ketty.Url, 32)
+	upC := make(chan []U.Url, 32)
+	downC := make(chan []U.Url, 32)
 	up = upC
 	down = downC
 	cb := func(s *etcd.Session, str string, h etcd.WatchHandler) error {
@@ -33,8 +31,8 @@ func (this *EtcdDriver) Watch(url ketty.Url) (up, down <-chan []ketty.Url, stop 
 			return err
 		}
 
-		upAddrs := []ketty.Url{}
-		downAddrs := []ketty.Url{}
+		upAddrs := []U.Url{}
+		downAddrs := []U.Url{}
 		lastNodes, ok := h.MetaData.(map[string]bool)
 		if !ok {
 			lastNodes = map[string]bool{}
@@ -46,12 +44,12 @@ func (this *EtcdDriver) Watch(url ketty.Url) (up, down <-chan []ketty.Url, stop 
 
 			// up
 			if _, exists := lastNodes[v]; !exists {
-				addr, err := ketty.UrlFromDriverString(v)
+				addr, err := U.UrlFromDriverString(v)
 				if err == nil {
 					upAddrs = append(upAddrs, addr)
-					ketty.GetLog().Debugf("up url %s", addr.ToString())
+					log.GetLog().Debugf("up url %s", addr.ToString())
 				} else {
-					ketty.GetLog().Warningf("unkown up url %s", addr.ToString())
+					log.GetLog().Warningf("unkown up url %s", addr.ToString())
                 }
 			}
 		}
@@ -59,12 +57,12 @@ func (this *EtcdDriver) Watch(url ketty.Url) (up, down <-chan []ketty.Url, stop 
 		// down
 		for v, _ := range lastNodes {
 			if _, exists := newNodes[v]; !exists {
-				addr, err := ketty.UrlFromDriverString(v)
+				addr, err := U.UrlFromDriverString(v)
 				if err == nil {
 					downAddrs = append(downAddrs, addr)
-					ketty.GetLog().Debugf("down url %s", addr.ToString())
+					log.GetLog().Debugf("down url %s", addr.ToString())
 				} else {
-					ketty.GetLog().Warningf("unkown down url %s", addr.ToString())
+					log.GetLog().Warningf("unkown down url %s", addr.ToString())
                 }
             }
         }
@@ -91,7 +89,7 @@ func (this *EtcdDriver) Watch(url ketty.Url) (up, down <-chan []ketty.Url, stop 
 	return
 }
 
-func (this *EtcdDriver) Register(url, value ketty.Url) (err error) {
+func (this *EtcdDriver) Register(url, value U.Url) (err error) {
 	sess, err := etcd.GetEtcdMgr().GetSession(url.SAddr)
 	if err != nil {
 		return

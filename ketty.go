@@ -1,7 +1,17 @@
 package ketty
 
 import (
+	U "github.com/yyzybb537/ketty/url"
+	P "github.com/yyzybb537/ketty/protocol"
+	B "github.com/yyzybb537/ketty/balancer"
+	A "github.com/yyzybb537/ketty/aop"
+	_ "github.com/yyzybb537/ketty/protocol/grpc"
+	_ "github.com/yyzybb537/ketty/protocol/http"
 )
+
+type Dummy interface{}
+type Client P.Client
+type Server P.Server
 
 // @主要组件
 //type Protocol interface {}
@@ -19,33 +29,33 @@ import (
 // @sBalanceUrl:  protocol://ip[:port][,ip[:port]]/path
 //    etcd://127.0.0.1:2379/path
 func Listen(sUrl, sDriverUrl string) (server Server, err error) {
-	url, err := UrlFromString(sUrl)
+	url, err := U.UrlFromString(sUrl)
 	if err != nil {
 		return
 	}
 
-	driverUrl, err := UrlFromString(sDriverUrl)
+	driverUrl, err := U.UrlFromString(sDriverUrl)
 	if err != nil {
 		return
 	}
 
-	proto, err := GetProtocol(url.Protocol)
+	proto, err := P.GetProtocol(url.Protocol)
 	if err != nil {
 		return
 	}
 
 	server, err = proto.CreateServer(url, driverUrl)
-	server.AddAop(DefaultAop().GetAop()...)
+	server.AddAop(A.DefaultAop().GetAop()...)
 	return
 }
 
 func Dial(sUrl, sBalancer string) (client Client, err error) {
-	url, err := UrlFromString(sUrl)
+	url, err := U.UrlFromString(sUrl)
 	if err != nil {
 		return
 	}
 
-	balancer, err := GetBalancer(sBalancer)
+	balancer, err := B.GetBalancer(sBalancer)
 	if err != nil {
 		return
 	}
@@ -57,7 +67,7 @@ func Dial(sUrl, sBalancer string) (client Client, err error) {
     }
 
 	client = clients
-	client.AddAop(DefaultAop().GetAop()...)
+	client.AddAop(A.DefaultAop().GetAop()...)
 	return
 }
 

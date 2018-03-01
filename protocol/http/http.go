@@ -1,23 +1,21 @@
 package http_proto
 
 import (
-	"github.com/yyzybb537/ketty"
+	U "github.com/yyzybb537/ketty/url"
+	P "github.com/yyzybb537/ketty/protocol"
 )
 
 type HttpProtocol struct {}
 
 func init() {
-	ketty.RegProtocol("http", new(HttpProtocol))
+	P.RegProtocol("http", new(HttpProtocol))
+	U.RegDefaultPort("http", 80)
 }
 
-func (this *HttpProtocol) DefaultPort() int {
-	return 80
-}
-
-func (this *HttpProtocol) CreateServer(url, driverUrl ketty.Url) (ketty.Server, error) {
+func (this *HttpProtocol) CreateServer(url, driverUrl U.Url) (P.Server, error) {
 	return newHttpServer(url, driverUrl), nil
 }
 
-func (this *HttpProtocol) Dial(url ketty.Url) (ketty.Client, error) {
+func (this *HttpProtocol) Dial(url U.Url) (P.Client, error) {
 	return newHttpClient(url)
 }

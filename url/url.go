@@ -1,4 +1,4 @@
-package ketty
+package url
 
 import (
 	"fmt"
@@ -19,20 +19,19 @@ type Addr struct {
 	MetaData interface{}
 }
 
-func AddrFromString(hostport string, protocol string) (a Addr, err error) {
-	dPort := 0
-	proto, err := GetProtocol(protocol)
-	if err != nil {
-		var driver Driver
-		driver, err = GetDriver(protocol)
-		if err != nil {
-			return 
-		}
-		dPort = driver.DefaultPort()
-	} else {
-		dPort = proto.DefaultPort()
-    }
+var defaultPorts = map[string]int{}
 
+func RegDefaultPort(protocol string, port int) {
+	defaultPorts[strings.ToLower(protocol)] = port
+}
+
+func GetDefaultPort(protocol string) (port int) {
+	port, _ = defaultPorts[strings.ToLower(protocol)]
+	return
+}
+
+func AddrFromString(hostport string, protocol string) (a Addr, err error) {
+	dPort := GetDefaultPort(protocol)
 	sIndex := strings.Index(hostport, ":")
 	if sIndex >= 0 {
 		a.Host = hostport[:sIndex]

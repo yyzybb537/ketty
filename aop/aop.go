@@ -1,8 +1,7 @@
-package ketty
+package aop
 
 import (
 	"golang.org/x/net/context"
-	"github.com/yyzybb537/ketty/aop"
 )
 
 // client
@@ -66,10 +65,10 @@ func DefaultAop() *AopList {
 }
 
 func init() {
-	DefaultAop().AddAop(new(aop.ExceptionAop))
-	DefaultAop().AddAop(new(aop.CostAop))
-	DefaultAop().AddAop(new(aop.TraceAop))
-	DefaultAop().AddAop(new(aop.LoggerAop))
+	DefaultAop().AddAop(new(ExceptionAop))
+	DefaultAop().AddAop(new(CostAop))
+	DefaultAop().AddAop(new(TraceAop))
+	DefaultAop().AddAop(new(LoggerAop))
 }
 
 func GetAop(ctx context.Context) []interface{} {

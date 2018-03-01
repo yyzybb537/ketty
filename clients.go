@@ -6,20 +6,26 @@ import (
 	"time"
 	"golang.org/x/net/context"
 	"github.com/yyzybb537/ketty/common"
+	U "github.com/yyzybb537/ketty/url"
+	P "github.com/yyzybb537/ketty/protocol"
+	B "github.com/yyzybb537/ketty/balancer"
+	D "github.com/yyzybb537/ketty/driver"
+	A "github.com/yyzybb537/ketty/aop"
+	COM "github.com/yyzybb537/ketty/common"
 )
 
 type UniqMap map[string]bool
 
 // Implement Client interface, and manage multiply clients.
 type Clients struct {
-	AopList
+	A.AopList
 
-	url       Url
-	balancer  Balancer
+	url       U.Url
+	balancer  B.Balancer
 
 	// manage all of address
 	addrMtx   sync.Mutex
-	addrs     map[string]Url
+	addrs     map[string]U.Url
 
 	// retry
 	q		  chan interface{}
@@ -36,12 +42,12 @@ type Clients struct {
 	root	  *Clients
 }
 
-func newClients(url Url, balancer Balancer, root *Clients) *Clients {
+func newClients(url U.Url, balancer B.Balancer, root *Clients) *Clients {
 	url.MetaData = nil
 	c := &Clients{
 		url : url,
 		balancer : balancer,
-		addrs : map[string]Url{},
+		addrs : map[string]U.Url{},
 		q : make(chan interface{}),
 		closed : false,
 		blockingWait : common.NewBlockingWait(),
@@ -56,12 +62,12 @@ func newClients(url Url, balancer Balancer, root *Clients) *Clients {
 
 func (this *Clients) dial() error {
 	//GetLog().Debugf("dial(%s)", this.url.ToString())
-	proto, err := GetProtocol(this.url.Protocol)
+	proto, err := P.GetProtocol(this.url.Protocol)
 	if err == nil {
 		return this.dialProtocol(proto)
     }
 
-	driver, err := GetDriver(this.url.Protocol)
+	driver, err := D.GetDriver(this.url.Protocol)
 	if err == nil {
 		return this.dialDriver(driver)
 	}
@@ -69,7 +75,7 @@ func (this *Clients) dial() error {
 	return fmt.Errorf("Error url, unkown protocol. url:%s", this.url.ToString())
 }
 
-func (this *Clients) dialProtocol(proto Protocol) error {
+func (this *Clients) dialProtocol(proto P.Protocol) error {
 	client, err := proto.Dial(this.url)
 	if err != nil {
 		return err
@@ -80,7 +86,7 @@ func (this *Clients) dialProtocol(proto Protocol) error {
 	return nil
 }
 
-func (this *Clients) dialDriver(driver Driver) error {
+func (this *Clients) dialDriver(driver D.Driver) error {
 	upC, downC, stop, err := driver.Watch(this.url)
 	if err != nil {
 		return err
@@ -89,8 +95,8 @@ func (this *Clients) dialDriver(driver Driver) error {
 
 	go func() {
 		for {
-			up := []Url{}
-			down := []Url{}
+			up := []U.Url{}
+			down := []U.Url{}
 			readOk := true
 			select {
 			case up, readOk = <-upC:
@@ -117,7 +123,7 @@ func (this *Clients) dialDriver(driver Driver) error {
 				this.addrMtx.Unlock()
 
 				// Close
-				url.MetaData.(Client).Close()
+				url.MetaData.(P.Client).Close()
             }
 
 			// up
@@ -195,7 +201,7 @@ func (this *Clients) Close() {
     }
 }
 
-func (this *Clients) Invoke(ctx context.Context, handle ServiceHandle, method string, req, rsp interface{}) error {
+func (this *Clients) Invoke(ctx context.Context, handle COM.ServiceHandle, method string, req, rsp interface{}) error {
 	url, put, err := this.balancer.Get(ctx)
 	if err != nil {
 		this.blockingWait.Wait()
@@ -207,7 +213,7 @@ func (this *Clients) Invoke(ctx context.Context, handle ServiceHandle, method st
 	if put != nil {
 		defer put()
     }
-	client := url.MetaData.(Client)
-	return client.Invoke(SetAop(ctx, this.root.GetAop()), handle, method, req, rsp)
+	client := url.MetaData.(P.Client)
+	return client.Invoke(A.SetAop(ctx, this.root.GetAop()), handle, method, req, rsp)
 }
 

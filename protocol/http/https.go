@@ -1,13 +1,15 @@
 package http_proto
 
 import (
-	"github.com/yyzybb537/ketty"
+	U "github.com/yyzybb537/ketty/url"
+	P "github.com/yyzybb537/ketty/protocol"
 )
 
 type HttpsProtocol struct {}
 
 func init() {
-	ketty.RegProtocol("https", new(HttpsProtocol))
+	P.RegProtocol("https", new(HttpsProtocol))
+	U.RegDefaultPort("https", 443)
 }
 
 var gCertFile, gKeyFile string
@@ -17,14 +19,10 @@ func InitTLS(certFile, keyFile string) {
 	gKeyFile = keyFile
 }
 
-func (this *HttpsProtocol) DefaultPort() int {
-	return 443
-}
-
-func (this *HttpsProtocol) CreateServer(url, driverUrl ketty.Url) (ketty.Server, error) {
+func (this *HttpsProtocol) CreateServer(url, driverUrl U.Url) (P.Server, error) {
 	return newHttpServer(url, driverUrl), nil
 }
 
-func (this *HttpsProtocol) Dial(url ketty.Url) (ketty.Client, error) {
+func (this *HttpsProtocol) Dial(url U.Url) (P.Client, error) {
 	return newHttpClient(url)
 }

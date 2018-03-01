@@ -5,8 +5,6 @@ import (
 	echo "github.com/yyzybb537/ketty/test/test_pb"
 	"github.com/yyzybb537/ketty"
 	kettyLog "github.com/yyzybb537/ketty/log"
-	_ "github.com/yyzybb537/ketty/driver"
-	_ "github.com/yyzybb537/ketty/protocol/grpc"
 	kettyHttp "github.com/yyzybb537/ketty/protocol/http"
 	"time"
 	context "golang.org/x/net/context"

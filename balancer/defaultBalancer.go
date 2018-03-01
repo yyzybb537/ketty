@@ -5,10 +5,11 @@ import (
 	"sync"
 	"sync/atomic"
 	"golang.org/x/net/context"
+	U "github.com/yyzybb537/ketty/url"
 )
 
 type RobinBalancer struct {
-	addrs []Url
+	addrs []U.Url
 	chooseIndex uint32
 	mtx sync.RWMutex
 }
@@ -18,12 +19,12 @@ func init() {
 	RegBalancer("default", new(RobinBalancer))
 }
 
-func (this *RobinBalancer) Filte(in []Url) (out []Url) {
+func (this *RobinBalancer) Filte(in []U.Url) (out []U.Url) {
 	out = in
 	return
 }
 
-func (this *RobinBalancer) Up(addr Url) (down func()) {
+func (this *RobinBalancer) Up(addr U.Url) (down func()) {
 	this.mtx.Lock()
 	defer this.mtx.Unlock()
 	this.addrs = append(this.addrs, addr)
@@ -40,11 +41,11 @@ func (this *RobinBalancer) Up(addr Url) (down func()) {
     }
 }
 
-func (this *RobinBalancer) Get(ctx context.Context) (addr Url, put func(), err error) {
+func (this *RobinBalancer) Get(ctx context.Context) (addr U.Url, put func(), err error) {
 	this.mtx.RLock()
 	defer this.mtx.RUnlock()
 	if len(this.addrs) == 0 {
-		return Url{}, nil, fmt.Errorf("No estab connection")
+		return U.Url{}, nil, fmt.Errorf("No estab connection")
     }
 
 	index := atomic.AddUint32(&this.chooseIndex, 1)

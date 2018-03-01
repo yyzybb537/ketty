@@ -1,4 +1,4 @@
-package ketty
+package common
 
 type ServiceHandle interface {
 	Implement() interface{}

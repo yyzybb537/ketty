@@ -1,8 +1,12 @@
 package http_proto
 
 import (
-	"github.com/yyzybb537/ketty"
-	kettyContext "github.com/yyzybb537/ketty/context"
+	C "github.com/yyzybb537/ketty/context"
+	COM "github.com/yyzybb537/ketty/common"
+	D "github.com/yyzybb537/ketty/driver"
+	U "github.com/yyzybb537/ketty/url"
+	A "github.com/yyzybb537/ketty/aop"
+	"github.com/yyzybb537/ketty/log"
 	"net"
 	"net/http"
 	"reflect"
@@ -17,15 +21,15 @@ import (
 )
 
 type HttpServer struct {
-	ketty.AopList
+	A.AopList
 
 	Impl		*http.Server
-	url			ketty.Url
-	driverUrl	ketty.Url
+	url			U.Url
+	driverUrl	U.Url
 	mux         *http.ServeMux
 }
 
-func newHttpServer(url, driverUrl ketty.Url) (*HttpServer) {
+func newHttpServer(url, driverUrl U.Url) (*HttpServer) {
 	s := &HttpServer {
 		Impl : &http.Server{},
 		url : url,
@@ -47,7 +51,7 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 	if metadataStr != "" {
 		err = json.Unmarshal([]byte(metadataStr), &metadata)
 		if err != nil {
-			ctx = kettyContext.WithError(ctx, errors.WithStack(err))
+			ctx = C.WithError(ctx, errors.WithStack(err))
 			return
 		}
 	}
@@ -55,14 +59,14 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 	var reflectReq reflect.Value
 	buf, err = ioutil.ReadAll(httpRequest.Body)
 	if err != nil {
-		ctx = kettyContext.WithError(ctx, errors.WithStack(err))
+		ctx = C.WithError(ctx, errors.WithStack(err))
 		return
 	}
 
 	reflectReq = reflect.New(requestType)
 	err = proto.Unmarshal(buf, reflectReq.Interface().(proto.Message))
 	if err != nil {
-		ctx = kettyContext.WithError(ctx, errors.WithStack(err))
+		ctx = C.WithError(ctx, errors.WithStack(err))
 		return 
 	}
 	req := reflectReq.Interface().(proto.Message)
@@ -73,7 +77,7 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 		ctx = context.WithValue(ctx, "remote", httpRequest.RemoteAddr)
 
 		for _, aop := range aopList {
-			caller, ok := aop.(ketty.ServerTransportMetaDataAop)
+			caller, ok := aop.(A.ServerTransportMetaDataAop)
 			if ok {
 				ctx = caller.ServerRecvMetaData(ctx, metadata)
 				if ctx.Err() != nil {
@@ -83,7 +87,7 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 		}
 
 		for _, aop := range aopList {
-			caller, ok := aop.(ketty.BeforeServerInvokeAop)
+			caller, ok := aop.(A.BeforeServerInvokeAop)
 			if ok {
 				ctx = caller.BeforeServerInvoke(ctx, req)
 				if ctx.Err() != nil {
@@ -94,7 +98,7 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 
 		defer func() {
 			for _, aop := range aopList {
-				caller, ok := aop.(ketty.ServerInvokeCleanupAop)
+				caller, ok := aop.(A.ServerInvokeCleanupAop)
 				if ok {
 					caller.ServerCleanup(ctx)
 				}
@@ -103,7 +107,7 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 
 		for i, _ := range aopList {
 			aop := aopList[len(aopList) - i - 1]
-			caller, ok := aop.(ketty.AfterServerInvokeAop)
+			caller, ok := aop.(A.AfterServerInvokeAop)
 			if ok {
 				defer caller.AfterServerInvoke(&ctx, req, rsp)
 			}
@@ -114,14 +118,14 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 	rsp = replies[0].Interface()
 	if replies[1].Interface() != nil {
 		err = replies[1].Interface().(error)
-		ctx = kettyContext.WithError(ctx, err)
+		ctx = C.WithError(ctx, err)
 		return 
 	}
 
 	return
 }
 
-func (this *HttpServer) RegisterMethod(handle ketty.ServiceHandle, implement interface{}) error {
+func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement interface{}) error {
 	desc := handle.Implement().(*grpc.ServiceDesc)
 	ht := reflect.TypeOf(desc.HandlerType).Elem()
 	it := reflect.TypeOf(implement)
@@ -156,7 +160,7 @@ func (this *HttpServer) RegisterMethod(handle ketty.ServiceHandle, implement int
 				return 
 			}
 
-			//ketty.GetLog().Debugf("Write response: %v", buf)
+			//log.GetLog().Debugf("Write response: %v", buf)
 
 			w.WriteHeader(200)
 			w.Write(buf)
@@ -167,7 +171,7 @@ func (this *HttpServer) RegisterMethod(handle ketty.ServiceHandle, implement int
 
 func (this *HttpServer) serve(addr string, proto string) error {
 	if proto == "http" {
-		lis, err := net.Listen("tcp", ketty.FormatAddr(addr, this.url.Protocol))
+		lis, err := net.Listen("tcp", U.FormatAddr(addr, this.url.Protocol))
 		if err != nil {
 			return err
 		}
@@ -175,15 +179,15 @@ func (this *HttpServer) serve(addr string, proto string) error {
 		go func() {
 			err := this.Impl.Serve(lis)
 			if err != nil {
-				ketty.GetLog().Errorf("Http.Serve lis error:%s. addr:%s", err.Error(), addr)
+				log.GetLog().Errorf("Http.Serve lis error:%s. addr:%s", err.Error(), addr)
 			}
         }()
     } else if proto == "https" {
 		go func() {
-			this.Impl.Addr = ketty.FormatAddr(addr, this.url.Protocol)
+			this.Impl.Addr = U.FormatAddr(addr, this.url.Protocol)
 			err := this.Impl.ListenAndServeTLS(gCertFile, gKeyFile)
 			if err != nil {
-				ketty.GetLog().Errorf("Http.ServeTLS lis error:%s. addr:%s", err.Error(), addr)
+				log.GetLog().Errorf("Http.ServeTLS lis error:%s. addr:%s", err.Error(), addr)
 			}
         }()
     } else {
@@ -203,7 +207,7 @@ func (this *HttpServer) Serve() error {
     }
 
 	if !this.driverUrl.IsEmpty() {
-		driver, err := ketty.GetDriver(this.driverUrl.Protocol)
+		driver, err := D.GetDriver(this.driverUrl.Protocol)
 		if err != nil {
 			return err
 		}

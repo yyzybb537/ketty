@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"strings"
 	"golang.org/x/net/context"
-	
+	U "github.com/yyzybb537/ketty/url"
 )
 
 // @looks like grpc.Balancer
 type Balancer interface {
-	Filte(in []Url) (out []Url)
+	Filte(in []U.Url) (out []U.Url)
 
-	Up(addr Url) (down func())
+	Up(addr U.Url) (down func())
 
-	Get(ctx context.Context) (addr Url, put func(), err error)
+	Get(ctx context.Context) (addr U.Url, put func(), err error)
 
 	Clone() Balancer
 }

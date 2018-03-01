@@ -147,7 +147,7 @@ var _EchoService_serviceDesc = grpc.ServiceDesc{
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ ketty.AopList
+var _ ketty.Dummy
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the ketty package it is being compiled against.
