@@ -25,3 +25,7 @@ func GetProtocol(sproto string) (Protocol, error) {
 func RegProtocol(sproto string, proto Protocol) {
 	protocols[strings.ToLower(sproto)] = proto
 }
+
+func DumpProtocols() string {
+	return fmt.Sprintf("%v", protocols)
+}

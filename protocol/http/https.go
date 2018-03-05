@@ -20,9 +20,9 @@ func InitTLS(certFile, keyFile string) {
 }
 
 func (this *HttpsProtocol) CreateServer(url, driverUrl U.Url) (P.Server, error) {
-	return newHttpServer(url, driverUrl), nil
+	return newHttpServer(url, driverUrl, new(P.PbMarshaler)), nil
 }
 
 func (this *HttpsProtocol) Dial(url U.Url) (P.Client, error) {
-	return newHttpClient(url)
+	return newHttpClient(url, new(P.PbMarshaler))
 }

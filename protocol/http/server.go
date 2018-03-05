@@ -6,6 +6,7 @@ import (
 	D "github.com/yyzybb537/ketty/driver"
 	U "github.com/yyzybb537/ketty/url"
 	A "github.com/yyzybb537/ketty/aop"
+	P "github.com/yyzybb537/ketty/protocol"
 	"github.com/yyzybb537/ketty/log"
 	"net"
 	"net/http"
@@ -27,14 +28,16 @@ type HttpServer struct {
 	url			U.Url
 	driverUrl	U.Url
 	mux         *http.ServeMux
+	m			P.Marshaler
 }
 
-func newHttpServer(url, driverUrl U.Url) (*HttpServer) {
+func newHttpServer(url, driverUrl U.Url, m P.Marshaler) (*HttpServer) {
 	s := &HttpServer {
 		Impl : &http.Server{},
 		url : url,
 		driverUrl : driverUrl,
 		mux : http.NewServeMux(),
+		m : m,
     }
 	s.Impl.Handler = s.mux
 	return s
@@ -64,7 +67,7 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 	}
 
 	reflectReq = reflect.New(requestType)
-	err = proto.Unmarshal(buf, reflectReq.Interface().(proto.Message))
+	err = this.m.Unmarshal(buf, reflectReq.Interface().(proto.Message))
 	if err != nil {
 		ctx = C.WithError(ctx, errors.WithStack(err))
 		return 
@@ -155,7 +158,7 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 
 			// body
 			var buf []byte
-			buf, err = proto.Marshal(rsp.(proto.Message))
+			buf, err = this.m.Marshal(rsp.(proto.Message))
 			if err != nil {
 				return 
 			}
@@ -170,7 +173,7 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 }
 
 func (this *HttpServer) serve(addr string, proto string) error {
-	if proto == "http" {
+	if proto == "http" || proto == "httpjson" {
 		lis, err := net.Listen("tcp", U.FormatAddr(addr, this.url.Protocol))
 		if err != nil {
 			return err
@@ -182,7 +185,7 @@ func (this *HttpServer) serve(addr string, proto string) error {
 				log.GetLog().Errorf("Http.Serve lis error:%s. addr:%s", err.Error(), addr)
 			}
         }()
-    } else if proto == "https" {
+    } else if proto == "https" || proto == "httpsjson" {
 		go func() {
 			this.Impl.Addr = U.FormatAddr(addr, this.url.Protocol)
 			err := this.Impl.ListenAndServeTLS(gCertFile, gKeyFile)

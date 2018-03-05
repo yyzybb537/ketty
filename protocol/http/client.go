@@ -5,6 +5,7 @@ import (
 	COM "github.com/yyzybb537/ketty/common"
 	U "github.com/yyzybb537/ketty/url"
 	A "github.com/yyzybb537/ketty/aop"
+	P "github.com/yyzybb537/ketty/protocol"
 	"fmt"
 	"strings"
 	"net/http"
@@ -23,20 +24,37 @@ type HttpClient struct {
 	url U.Url
 	tr *http.Transport
 	client *http.Client
+	m P.Marshaler
 }
 
-func newHttpClient(url U.Url) (*HttpClient, error) {
+func newHttpClient(url U.Url, m P.Marshaler) (*HttpClient, error) {
 	c := new(HttpClient)
 	c.url = url
 	c.tr = &http.Transport{
         TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
     }
     c.client = &http.Client{Transport: c.tr}
+	c.m = m
 	return c, nil
 }
 
 func (this *HttpClient) Close() {
-	
+}
+
+func (this *HttpClient) getUrl() string {
+	s := this.url.ToString()
+	switch this.url.Protocol {
+	case "http":
+		fallthrough
+	case "https":
+		return s
+
+	case "httpjson":
+		return s[:4] + s[8:]
+	case "httpsjson":
+		return s[:5] + s[9:]
+    }
+	return s
 }
 
 func (this *HttpClient) Invoke(ctx context.Context, handle COM.ServiceHandle, method string, req, rsp interface{}) (error) {
@@ -46,20 +64,20 @@ func (this *HttpClient) Invoke(ctx context.Context, handle COM.ServiceHandle, me
 
 func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, method string, req, rsp interface{}) (ctx context.Context) {
 	ctx = inCtx
-	buf, err := proto.Marshal(req.(proto.Message))
+	buf, err := this.m.Marshal(req.(proto.Message))
 	if err != nil {
 		ctx = C.WithError(ctx, errors.WithStack(err))
 		return
 	}
 	
 	fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method)
-	fullUrl := this.url.ToString() + fullMethodName
+	fullUrl := this.getUrl() + fullMethodName
 	metadata := map[string]string{}
 
 	aopList := A.GetAop(ctx)
 	if aopList != nil {
 		ctx = context.WithValue(ctx, "method", fullMethodName)
-		ctx = context.WithValue(ctx, "remote", this.url.ToString())
+		ctx = context.WithValue(ctx, "remote", this.getUrl())
 
 		for _, aop := range aopList {
 			caller, ok := aop.(A.ClientTransportMetaDataAop)
@@ -134,7 +152,7 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 		return
 	}
 
-	err = proto.Unmarshal(buf, rsp.(proto.Message))
+	err = this.m.Unmarshal(buf, rsp.(proto.Message))
 	if err != nil {
 		ctx = C.WithError(ctx, errors.WithStack(err))
 		return

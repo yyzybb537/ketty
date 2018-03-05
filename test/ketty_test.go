@@ -5,6 +5,7 @@ import (
 	echo "github.com/yyzybb537/ketty/test/test_pb"
 	"github.com/yyzybb537/ketty"
 	kettyLog "github.com/yyzybb537/ketty/log"
+	P "github.com/yyzybb537/ketty/protocol"
 	kettyHttp "github.com/yyzybb537/ketty/protocol/http"
 	"time"
 	context "golang.org/x/net/context"
@@ -36,7 +37,7 @@ func startServer(t *testing.T, sUrl string, driverUrl string) {
 
 	err = server.Serve()
 	if err != nil {
-		t.Fatalf("Serve error:%s", err.Error())
+		t.Fatalf("Serve (%s) error:%s", sUrl, err.Error())
 	}
 }
 
@@ -99,7 +100,9 @@ func bStartClient(b *testing.B, sUrl string) {
 }
 
 var httpUrl = "http://127.0.0.1:8091"
+var httpjsonUrl = "httpjson://127.0.0.1:8092"
 var httpsUrl = "https://127.0.0.1:3050"
+var httpsjsonUrl = "httpsjson://127.0.0.1:3051"
 var grpcUrl = "grpc://127.0.0.1:8090"
 var etcdUrl = "grpc://127.0.0.1:8090"
 var urls = []string{
@@ -107,11 +110,14 @@ var urls = []string{
 	httpUrl,
 	httpsUrl,
 	grpcUrl,
+	httpjsonUrl,
+	httpsjsonUrl,
 }
 
 func TestGrpc(t *testing.T) {
 	kettyHttp.InitTLS("cert.pem", "key.pem")
 	ketty.SetLog(new(kettyLog.StdLog))
+	ketty.GetLog().Debugf("Protocols:%s", P.DumpProtocols())
 	for _, sUrl := range urls {
 		t.Logf("Do url:%s", sUrl)
 		startServer(t, sUrl, "")
