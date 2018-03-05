@@ -8,13 +8,9 @@ import (
 	P "github.com/yyzybb537/ketty/protocol"
 	"fmt"
 	"strings"
-	"net/http"
 	"golang.org/x/net/context"
 	"github.com/golang/protobuf/proto"
-	"bytes"
-	"io/ioutil"
 	"github.com/pkg/errors"
-	"crypto/tls"
 	"encoding/json"
 )
 
@@ -22,19 +18,13 @@ type HttpClient struct {
 	A.AopList
 
 	url U.Url
-	tr *http.Transport
-	client *http.Client
-	m P.Marshaler
+	invoker *HttpInvoker
 }
 
 func newHttpClient(url U.Url, m P.Marshaler) (*HttpClient, error) {
 	c := new(HttpClient)
 	c.url = url
-	c.tr = &http.Transport{
-        TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
-    }
-    c.client = &http.Client{Transport: c.tr}
-	c.m = m
+	c.invoker = NewHttpInvoker(m)
 	return c, nil
 }
 
@@ -63,13 +53,8 @@ func (this *HttpClient) Invoke(ctx context.Context, handle COM.ServiceHandle, me
 }
 
 func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, method string, req, rsp interface{}) (ctx context.Context) {
+	var err error
 	ctx = inCtx
-	buf, err := this.m.Marshal(req.(proto.Message))
-	if err != nil {
-		ctx = C.WithError(ctx, errors.WithStack(err))
-		return
-	}
-	
 	fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method)
 	fullUrl := this.getUrl() + fullMethodName
 	metadata := map[string]string{}
@@ -117,12 +102,10 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 		}
 	}
 
-	httpRequest, err := http.NewRequest("POST", fullUrl, bytes.NewBuffer(buf))
-	if err != nil {
-		ctx = C.WithError(ctx, errors.WithStack(err))
-		return
-    }
-	httpRequest.Header.Set("Content-Type", "binary/protobuf")
+	headers := map[string]string{
+		"Content-Type" : "binary/protobuf",
+	}
+
 	if len(metadata) > 0 {
 		var metadataBuf []byte
 		metadataBuf, err = json.Marshal(metadata)
@@ -131,30 +114,12 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 			return
 		}
 
-		httpRequest.Header.Set("KettyMetaData", string(metadataBuf))
+		headers["KettyMetaData"] = string(metadataBuf)
 	}
 
-	httpResponse, err := this.client.Do(httpRequest)
+	err = this.invoker.DoWithHeaders(fullUrl, req.(proto.Message), rsp.(proto.Message), headers)
 	if err != nil {
-		ctx = C.WithError(ctx, errors.WithStack(err))
-		return
-    }
-	defer httpResponse.Body.Close()
-
-	if httpResponse.StatusCode != 200 {
-		ctx = C.WithError(ctx, errors.Errorf("status:%d", httpResponse.StatusCode))
-		return 
-	}
-
-	buf, err = ioutil.ReadAll(httpResponse.Body)
-	if err != nil {
-		ctx = C.WithError(ctx, errors.WithStack(err))
-		return
-	}
-
-	err = this.m.Unmarshal(buf, rsp.(proto.Message))
-	if err != nil {
-		ctx = C.WithError(ctx, errors.WithStack(err))
+		ctx = C.WithError(ctx, err)
 		return
 	}
 
