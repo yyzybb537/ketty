@@ -106,6 +106,12 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 		"Content-Type" : "binary/protobuf",
 	}
 
+	// 鉴权数据用Header发送
+	if authorization, exists := metadata[COM.AuthorizationMetaKey]; exists {
+		headers["Authorization"] = authorization
+		delete(metadata, COM.AuthorizationMetaKey)
+	}
+
 	if len(metadata) > 0 {
 		var metadataBuf []byte
 		metadataBuf, err = json.Marshal(metadata)

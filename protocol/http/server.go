@@ -48,6 +48,8 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 	var buf []byte
 	var err error
 
+	//log.GetLog().Debugf("HttpServer Request: %s", log.LogFormat(httpRequest, log.Indent))
+
 	// metadata
 	metadata := map[string]string{}
 	metadataStr := httpRequest.Header.Get("KettyMetaData")
@@ -57,6 +59,12 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 			ctx = C.WithError(ctx, errors.WithStack(err))
 			return
 		}
+	}
+
+	// 鉴权数据从Header提取
+	authorization := httpRequest.Header.Get("Authorization")
+	if authorization != "" {
+		metadata[COM.AuthorizationMetaKey] = authorization
 	}
 
 	var reflectReq reflect.Value
