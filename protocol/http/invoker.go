@@ -62,15 +62,20 @@ func (this *HttpInvoker) DoWithHeaders(url string, req, rsp proto.Message, heade
     }
 	defer httpResponse.Body.Close()
 
-	if httpResponse.StatusCode != 200 {
-		err = errors.Errorf("error http status:%d", httpResponse.StatusCode)
-		return 
-	}
-
 	buf, err = ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
 		err = errors.WithStack(err)
 		return
+	}
+
+	if httpResponse.StatusCode == 501 {
+		err = errors.Errorf(string(buf))
+		return 
+	}
+
+	if httpResponse.StatusCode != 200 {
+		err = errors.Errorf("error http status:%d", httpResponse.StatusCode)
+		return 
 	}
 
 	err = this.m.Unmarshal(buf, rsp)
