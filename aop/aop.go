@@ -66,6 +66,7 @@ func DefaultAop() *AopList {
 
 func init() {
 	DefaultAop().AddAop(new(ExceptionAop))
+	DefaultAop().AddAop(new(ReqRspAop))
 	DefaultAop().AddAop(new(CostAop))
 	DefaultAop().AddAop(new(TraceAop))
 	DefaultAop().AddAop(new(LoggerAop))
