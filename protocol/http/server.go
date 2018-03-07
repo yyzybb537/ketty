@@ -181,7 +181,15 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 }
 
 func (this *HttpServer) serve(addr string, proto string) error {
-	if proto == "http" || proto == "httpjson" {
+	if strings.HasPrefix(proto, "https") {
+		go func() {
+			this.Impl.Addr = U.FormatAddr(addr, this.url.Protocol)
+			err := this.Impl.ListenAndServeTLS(gCertFile, gKeyFile)
+			if err != nil {
+				log.GetLog().Errorf("Http.ServeTLS lis error:%s. addr:%s", err.Error(), addr)
+			}
+        }()
+    } else if strings.HasPrefix(proto, "http") {
 		lis, err := net.Listen("tcp", U.FormatAddr(addr, this.url.Protocol))
 		if err != nil {
 			return err
@@ -191,14 +199,6 @@ func (this *HttpServer) serve(addr string, proto string) error {
 			err := this.Impl.Serve(lis)
 			if err != nil {
 				log.GetLog().Errorf("Http.Serve lis error:%s. addr:%s", err.Error(), addr)
-			}
-        }()
-    } else if proto == "https" || proto == "httpsjson" {
-		go func() {
-			this.Impl.Addr = U.FormatAddr(addr, this.url.Protocol)
-			err := this.Impl.ListenAndServeTLS(gCertFile, gKeyFile)
-			if err != nil {
-				log.GetLog().Errorf("Http.ServeTLS lis error:%s. addr:%s", err.Error(), addr)
 			}
         }()
     } else {

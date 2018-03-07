@@ -32,19 +32,13 @@ func (this *HttpClient) Close() {
 }
 
 func (this *HttpClient) getUrl() string {
-	s := this.url.ToString()
-	switch this.url.Protocol {
-	case "http":
-		fallthrough
-	case "https":
-		return s
+	if strings.HasPrefix(this.url.Protocol, "https") {
+		return this.url.ToStringByProtocol("https")
+	} else if strings.HasPrefix(this.url.Protocol, "http") {
+		return this.url.ToStringByProtocol("http")
+	}
 
-	case "httpjson":
-		return s[:4] + s[8:]
-	case "httpsjson":
-		return s[:5] + s[9:]
-    }
-	return s
+	return this.url.ToString()
 }
 
 func (this *HttpClient) Invoke(ctx context.Context, handle COM.ServiceHandle, method string, req, rsp interface{}) (error) {

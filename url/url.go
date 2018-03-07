@@ -109,6 +109,18 @@ func (this Url) ToString() string {
     }
 }
 
+func (this Url) ToStringByProtocol(protocol string) string {
+	if this.IsEmpty() {
+		return ""
+    }
+
+	if this.Path == "" {
+		return fmt.Sprintf("%s://%s", protocol, this.SAddr)
+	} else {
+		return fmt.Sprintf("%s://%s/%s", protocol, this.SAddr, this.Path)
+    }
+}
+
 func (this Url) ToDriverString() string {
 	return strings.Replace(this.ToString(), "/", "|", -1)
 }
