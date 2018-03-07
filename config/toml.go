@@ -19,7 +19,7 @@ func (this *TomlConfig) Read(cfg interface{}, file string) (err error) {
 		return
 	}
 
-	_, err = toml.DecodeFile(os.Args[1], cfg)
+	_, err = toml.DecodeFile(file, cfg)
 	return
 }
 
