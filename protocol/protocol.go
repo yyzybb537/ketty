@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"strings"
 	U "github.com/yyzybb537/ketty/url"
 )
@@ -17,7 +18,7 @@ var protocols = make(map[string]Protocol)
 func GetProtocol(sproto string) (Protocol, error) {
 	proto, exists := protocols[strings.ToLower(sproto)]
 	if !exists {
-		return nil, fmt.Errorf("Unkown Protocol:%s", sproto)
+		return nil, errors.Errorf("Unkown Protocol:%s", sproto)
 	}
 	return proto, nil
 }

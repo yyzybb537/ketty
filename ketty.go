@@ -38,10 +38,26 @@ type Server P.Server
 //   glog or seelog
 
 // @sUrl:   protocol://ip[:port][,ip[:port]]/path
-// E.g:
+//  E.g:
 //    http://127.0.0.1:8030/path
 //    https://127.0.0.1:8030
 //    grpc://127.0.0.1:8030,127.0.0.1:8031
+//    
+//  Support marshal: pb(default), json.
+//  Support http method: GET, POST(default)
+//  Support http data transport: body(default), query, multipart
+//
+//  User can make extend marshal.
+//  If use `query`, the marshal will be ignored.
+//
+//  Others E.g:
+//    http.json://127.0.0.1:8030/path
+//    http.json.query://127.0.0.1:8030/path
+//    http.pb.query://127.0.0.1:8030/path
+//    http.json.get.query://127.0.0.1:8030/path
+//    http.json.post.multipart://127.0.0.1:8030/path
+//    http.get.query://127.0.0.1:8030/path
+//    http.post.body://127.0.0.1:8030/path
 //
 // @sBalanceUrl:  driver://ip[:port][,ip[:port]]/path
 //    etcd://127.0.0.1:2379/path
@@ -56,7 +72,7 @@ func Listen(sUrl, sDriverUrl string) (server Server, err error) {
 		return
 	}
 
-	proto, err := P.GetProtocol(url.Protocol)
+	proto, err := P.GetProtocol(url.GetMainProtocol())
 	if err != nil {
 		return
 	}

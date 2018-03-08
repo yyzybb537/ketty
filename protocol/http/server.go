@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"fmt"
 	"strings"
-	"io/ioutil"
 	"google.golang.org/grpc"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -28,24 +27,108 @@ type HttpServer struct {
 	url			U.Url
 	driverUrl	U.Url
 	mux         *http.ServeMux
-	m			P.Marshaler
+	opts        *Options
 }
 
-func newHttpServer(url, driverUrl U.Url, m P.Marshaler) (*HttpServer) {
+func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 	s := &HttpServer {
 		Impl : &http.Server{},
 		url : url,
 		driverUrl : driverUrl,
 		mux : http.NewServeMux(),
-		m : m,
+    }
+	var err error
+	s.opts, err = ParseOptions(url.Protocol)
+	if err != nil {
+		return nil, err
     }
 	s.Impl.Handler = s.mux
-	return s
+	return s, nil
+}
+
+func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType reflect.Type) (proto.Message, error) {
+	req := reflect.New(requestType)
+	_, isKettyHttpExtend := req.Interface().(KettyHttpExtend)
+	if !isKettyHttpExtend {
+		// Not extend, use default
+		tr, _ := MgrTransport.Get(this.opts.DefaultTransport).(DataTransport)
+		buf, err := tr.Read(httpRequest)
+		if err != nil {
+			return nil, err
+        }
+
+		mr, _ := P.MgrMarshaler.Get(this.opts.DefaultMarshaler).(P.Marshaler)
+		err = mr.Unmarshal(buf, req.Interface().(proto.Message))
+		if err != nil {
+			return nil, err
+        }
+
+		return req.Interface().(proto.Message), nil
+    }
+
+	// use http extend
+	numFields := req.Elem().NumField()
+	trMap := map[string]bool{}
+	for i := 0; i < numFields; i++ {
+		fvalue := req.Elem().Field(i)
+		ftype := requestType.Field(i).Type
+		if !ftype.ConvertibleTo(typeProtoMessage) {
+			return nil, fmt.Errorf("Use http extend message, all of fields must be proto.Message! Error message name is %s", requestType.Name())
+        }
+		fvalue.Set(reflect.New(ftype.Elem()))
+
+		sTr := this.opts.DefaultTransport
+		if ftype.ConvertibleTo(typeDefineTransport) {
+			sTr = fvalue.Convert(typeDefineTransport).Interface().(DefineTransport).KettyTransport()
+        }
+
+		// check tr unique
+		if _, exists := trMap[sTr]; exists {
+			return nil, fmt.Errorf("The message used http extend, transport must be unique. Too many field use transport(%s) in message:%s", sTr, requestType.Name())
+		}
+		trMap[sTr] = true
+
+		tr, ok := MgrTransport.Get(sTr).(DataTransport)
+		if !ok {
+			return nil, fmt.Errorf("Unknown transport(%s) in message:%s", sTr, ftype.Name())
+        }
+
+		buf, err := tr.Read(httpRequest)
+		if err != nil {
+			return nil, err
+        }
+
+		if len(buf) == 0 {
+			// skip nil message
+			continue
+        }
+
+		sMr := this.opts.DefaultMarshaler
+		if ftype.ConvertibleTo(typeDefineMarshaler) {
+			sMr = fvalue.Convert(typeDefineMarshaler).Interface().(DefineMarshaler).KettyMarshal()
+        }
+
+		if sTr == "query" {
+			sMr = "querystring"
+		}
+
+		mr, ok := P.MgrMarshaler.Get(sMr).(P.Marshaler)
+		if !ok {
+			return nil, fmt.Errorf("Unknown marshal(%s) in message:%s", sMr, ftype.Name())
+        }
+
+		fMessage := fvalue.Interface().(proto.Message)
+		err = mr.Unmarshal(buf, fMessage)
+		if err != nil {
+			return nil, err
+        }
+	}
+
+	return req.Interface().(proto.Message), nil
 }
 
 func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, requestType reflect.Type, reflectMethod reflect.Value) (rsp interface{}, ctx context.Context) {
 	ctx = context.Background()
-	var buf []byte
 	var err error
 
 	//log.GetLog().Debugf("HttpServer Request: %s", log.LogFormat(httpRequest, log.Indent))
@@ -67,20 +150,12 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 		metadata[COM.AuthorizationMetaKey] = authorization
 	}
 
-	var reflectReq reflect.Value
-	buf, err = ioutil.ReadAll(httpRequest.Body)
-	if err != nil {
-		ctx = C.WithError(ctx, errors.WithStack(err))
-		return
-	}
-
-	reflectReq = reflect.New(requestType)
-	err = this.m.Unmarshal(buf, reflectReq.Interface().(proto.Message))
+	// 解析Message
+	req, err := this.parseMessage(httpRequest, requestType)
 	if err != nil {
 		ctx = C.WithError(ctx, errors.WithStack(err))
 		return 
 	}
-	req := reflectReq.Interface().(proto.Message)
 
 	aopList := this.GetAop()
 	if aopList != nil {
@@ -125,7 +200,7 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 		}
 	}
 
-	replies := reflectMethod.Call([]reflect.Value{reflect.ValueOf(context.Background()), reflectReq})
+	replies := reflectMethod.Call([]reflect.Value{reflect.ValueOf(context.Background()), reflect.ValueOf(req)})
 	rsp = replies[0].Interface()
 	if replies[1].Interface() != nil {
 		err = replies[1].Interface().(error)
@@ -166,7 +241,8 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 
 			// body
 			var buf []byte
-			buf, err = this.m.Marshal(rsp.(proto.Message))
+			mr, _ := P.MgrMarshaler.Get(this.opts.DefaultMarshaler).(P.Marshaler)
+			buf, err = mr.Marshal(rsp.(proto.Message))
 			if err != nil {
 				return 
 			}

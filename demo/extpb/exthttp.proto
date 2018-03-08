@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package ext_pb;
+
+import "ketty.proto";
+
+message QueryReq {
+    option (transport) = "query";
+
+    int64 qVal = 1;
+}
+
+message JsonReq {
+    option (transport) = "body";
+    option (marshal) = "json";
+
+    int64 JVal = 1;
+}
+
+message Req {
+    option (use_ketty_http_extend) = true;
+
+    QueryReq qr = 1;
+
+    JsonReq jr = 2;
+}
+
+message Rsp {
+    int64 val = 1;
+}
+
+service EchoService {
+    rpc Echo(Req) returns(Rsp) {}
+}
+

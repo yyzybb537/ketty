@@ -62,7 +62,7 @@ func newClients(url U.Url, balancer B.Balancer, root *Clients) *Clients {
 
 func (this *Clients) dial() error {
 	//GetLog().Debugf("dial(%s)", this.url.ToString())
-	proto, err := P.GetProtocol(this.url.Protocol)
+	proto, err := P.GetProtocol(this.url.GetMainProtocol())
 	if err == nil {
 		return this.dialProtocol(proto)
     }

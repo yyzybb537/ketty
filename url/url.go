@@ -10,7 +10,7 @@ import (
 var re *regexp.Regexp
 
 func init() {
-	re = regexp.MustCompile("(\\w+)://([^/]+)(.*)")
+	re = regexp.MustCompile("([\\w\\.]+)://([^/]+)(.*)")
 }
 
 type Addr struct {
@@ -31,7 +31,7 @@ func GetDefaultPort(protocol string) (port int) {
 }
 
 func AddrFromString(hostport string, protocol string) (a Addr, err error) {
-	dPort := GetDefaultPort(protocol)
+	dPort := GetDefaultPort(GetMainProtocol(protocol))
 	sIndex := strings.Index(hostport, ":")
 	if sIndex >= 0 {
 		a.Host = hostport[:sIndex]
@@ -93,11 +93,23 @@ func UrlFromDriverString(url string) (Url, error) {
 	return UrlFromString(strings.Replace(url, "|", "/", -1))
 }
 
-func (this Url) GetAddrs() []string {
+func (this *Url) GetAddrs() []string {
 	return strings.Split(this.SAddr, ",")
 }
 
-func (this Url) ToString() string {
+func (this *Url) GetMainProtocol() string {
+	return GetMainProtocol(this.Protocol)
+}
+
+func GetMainProtocol(protocol string) string {
+	ss := strings.Split(protocol, ".")
+	if len(ss) > 0 {
+		return ss[0]
+	}
+	return protocol
+}
+
+func (this *Url) ToString() string {
 	if this.IsEmpty() {
 		return ""
     }
@@ -109,7 +121,7 @@ func (this Url) ToString() string {
     }
 }
 
-func (this Url) ToStringByProtocol(protocol string) string {
+func (this *Url) ToStringByProtocol(protocol string) string {
 	if this.IsEmpty() {
 		return ""
     }
@@ -121,11 +133,11 @@ func (this Url) ToStringByProtocol(protocol string) string {
     }
 }
 
-func (this Url) ToDriverString() string {
+func (this *Url) ToDriverString() string {
 	return strings.Replace(this.ToString(), "/", "|", -1)
 }
 
-func (this Url) IsEmpty() bool {
+func (this *Url) IsEmpty() bool {
 	return this.Protocol == ""
 }
 
