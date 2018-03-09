@@ -108,20 +108,19 @@ func gid() int64 {
 var sections = make(map[interface{}]bool)
 var sectionMu sync.RWMutex
 
-func EnableSection(key interface{}) {
+func EnableSection(opt interface{}) {
 	sectionMu.Lock()
 	defer sectionMu.Unlock()
-	sections[key] = true
+	sections[opt] = true
 }
 
-func DisableSection(key interface{}) {
+func DisableSection(opt interface{}) {
 	sectionMu.Lock()
 	defer sectionMu.Unlock()
-	sections[key] = false
+	sections[opt] = false
 }
 
 type Verbose bool
-
 func (this Verbose) Debugf(format string, args ... interface{}) {
 	if this {
 		logger.Debugf(format, args)
@@ -253,8 +252,4 @@ func (this *StdLog) Fatalln(args ... interface{}) {
 }
 func (this *StdLog) Recordln(args ... interface{}) {
 	this.logln(lv_record, args...)
-}
-func (this *StdLog) EnableDebug(key interface{}) {
-}
-func (this *StdLog) DisableSection(key interface{}) {
 }
