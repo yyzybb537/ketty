@@ -5,6 +5,7 @@ import (
 	"time"
 	"runtime"
 	"strings"
+	"sync"
 	"github.com/yyzybb537/gls"
 )
 
@@ -14,12 +15,14 @@ type LogI interface {
 	Infof(format string, args ... interface{})
 	Warningf(format string, args ... interface{})
 	Errorf(format string, args ... interface{})
+	Fatalf(format string, args ... interface{})
 	Recordf(format string, args ... interface{})
 
 	Debugln(args ... interface{})
 	Infoln(args ... interface{})
 	Warningln(args ... interface{})
 	Errorln(args ... interface{})
+	Fatalln(args ... interface{})
 	Recordln(args ... interface{})
 }
 
@@ -29,8 +32,15 @@ func SetLog(l LogI) {
 	logger = l
 }
 
-func GetLog() LogI {
-	return logger
+func GetLog(key interface{}) LogI {
+	sectionMu.RLock()
+	defer sectionMu.RUnlock()
+	b, exists := sections[key]
+	if !exists || b {
+		return Verbose(true)
+    }
+
+	return Verbose(false)
 }
 
 // ---------------------------------------------------
@@ -40,6 +50,7 @@ const (
 	lv_info
 	lv_warning
 	lv_error
+	lv_fatal
 	lv_record
 )
 
@@ -55,6 +66,8 @@ func (lv Level) ToString() string {
 		return "Error"
 	case lv_record:
 		return "Record"
+	case lv_fatal:
+		return "Fatal"
 	default:
 		return "Unkown"
     }
@@ -72,6 +85,8 @@ func (lv Level) Header() string {
 		return "E"
 	case lv_record:
 		return "R"
+	case lv_fatal:
+		return "F"
 	default:
 		return "U"
     }
@@ -84,6 +99,135 @@ func now() string {
 func gid() int64 {
 	return gls.Goid()
 }
+
+// ---------------------------------------------------
+var sections = make(map[interface{}]bool)
+var sectionMu sync.RWMutex
+
+func S(key interface{}) LogI{
+	sectionMu.RLock()
+	defer sectionMu.RUnlock()
+	b, exists := sections[key]
+	if !exists || b {
+		return Verbose(true)
+    }
+
+	return Verbose(false)
+}
+
+func EnableSection(key interface{}) {
+	sectionMu.Lock()
+	defer sectionMu.Unlock()
+	sections[key] = true
+}
+
+func DisableSection(key interface{}) {
+	sectionMu.Lock()
+	defer sectionMu.Unlock()
+	sections[key] = false
+}
+
+type Verbose bool
+
+func (this Verbose) Debugf(format string, args ... interface{}) {
+	if this {
+		logger.Debugf(format, args)
+    }
+}
+func (this Verbose) Infof(format string, args ... interface{}) {
+	if this {
+		logger.Infof(format, args)
+    }
+}
+func (this Verbose) Warningf(format string, args ... interface{}) {
+	if this {
+		logger.Warningf(format, args)
+    }
+}
+func (this Verbose) Errorf(format string, args ... interface{}) {
+	if this {
+		logger.Errorf(format, args)
+    }
+}
+func (this Verbose) Fatalf(format string, args ... interface{}) {
+	if this {
+		logger.Fatalf(format, args)
+    }
+}
+func (this Verbose) Recordf(format string, args ... interface{}) {
+	if this {
+		logger.Recordf(format, args)
+    }
+}
+func (this Verbose) Debugln(args ... interface{}) {
+	if this {
+		logger.Debugln(args)
+    }
+}
+func (this Verbose) Infoln(args ... interface{}) {
+	if this {
+		logger.Infoln(args)
+    }
+}
+func (this Verbose) Warningln(args ... interface{}) {
+	if this {
+		logger.Warningln(args)
+    }
+}
+func (this Verbose) Errorln(args ... interface{}) {
+	if this {
+		logger.Errorln(args)
+    }
+}
+func (this Verbose) Fatalln(args ... interface{}) {
+	if this {
+		logger.Fatalln(args)
+    }
+}
+func (this Verbose) Recordln(args ... interface{}) {
+	if this {
+		logger.Recordln(args)
+    }
+}
+// ---------------------------------------------------
+func Debugf(format string, args ... interface{}) {
+	logger.Debugf(format, args)
+}
+func Infof(format string, args ... interface{}) {
+	logger.Infof(format, args)
+}
+func Warningf(format string, args ... interface{}) {
+	logger.Warningf(format, args)
+}
+func Errorf(format string, args ... interface{}) {
+	logger.Errorf(format, args)
+}
+func Fatalf(format string, args ... interface{}) {
+	logger.Fatalf(format, args)
+}
+func Recordf(format string, args ... interface{}) {
+	logger.Recordf(format, args)
+}
+func Debugln(args ... interface{}) {
+	logger.Debugln(args)
+}
+func Infoln(args ... interface{}) {
+	logger.Infoln(args)
+}
+func Warningln(args ... interface{}) {
+	logger.Warningln(args)
+}
+func Errorln(args ... interface{}) {
+	logger.Errorln(args)
+}
+func Fatalln(args ... interface{}) {
+	logger.Fatalln(args)
+}
+func Recordln(args ... interface{}) {
+	logger.Recordln(args)
+}
+// ---------------------------------------------------
+
 
 type FakeLog struct {}
 func (this *FakeLog) Debugf(format string, args ... interface{}) {}
@@ -130,6 +274,9 @@ func (this *StdLog) Warningf(format string, args ... interface{}) {
 func (this *StdLog) Errorf(format string, args ... interface{}) {
 	this.logf(lv_error, format, args...)
 }
+func (this *StdLog) Fatalf(format string, args ... interface{}) {
+	this.logf(lv_fatal, format, args...)
+}
 func (this *StdLog) Recordf(format string, args ... interface{}) {
 	this.logf(lv_record, format, args...)
 }
@@ -145,6 +292,13 @@ func (this *StdLog) Warningln(args ... interface{}) {
 func (this *StdLog) Errorln(args ... interface{}) {
 	this.logln(lv_error, args...)
 }
+func (this *StdLog) Fatalln(args ... interface{}) {
+	this.logln(lv_fatal, args...)
+}
 func (this *StdLog) Recordln(args ... interface{}) {
 	this.logln(lv_record, args...)
+}
+func (this *StdLog) EnableDebug(key interface{}) {
+}
+func (this *StdLog) DisableSection(key interface{}) {
 }
