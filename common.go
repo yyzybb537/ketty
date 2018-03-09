@@ -11,6 +11,8 @@ func Assert(err error) {
 }
 
 func Hung() {
+	time.Sleep(time.Second)
+	GetLog().Infof("ketty service startup")
 	for {
 		time.Sleep(time.Second * 3600)
     }
