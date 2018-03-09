@@ -3,7 +3,7 @@ package ketty
 import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/yyzybb537/ketty/log"
+	"github.com/yyzybb537/ketty/extends/log"
 	"sync/atomic"
 	"time"
 )

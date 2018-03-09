@@ -32,10 +32,14 @@ func SetLog(l LogI) {
 	logger = l
 }
 
-func GetLog(key interface{}) LogI {
+func GetLog(opt ... interface{}) LogI {
+	if len(opt) == 0 {
+		return logger
+    }
+
 	sectionMu.RLock()
 	defer sectionMu.RUnlock()
-	b, exists := sections[key]
+	b, exists := sections[opt]
 	if !exists || b {
 		return Verbose(true)
     }
@@ -103,17 +107,6 @@ func gid() int64 {
 // ---------------------------------------------------
 var sections = make(map[interface{}]bool)
 var sectionMu sync.RWMutex
-
-func S(key interface{}) LogI{
-	sectionMu.RLock()
-	defer sectionMu.RUnlock()
-	b, exists := sections[key]
-	if !exists || b {
-		return Verbose(true)
-    }
-
-	return Verbose(false)
-}
 
 func EnableSection(key interface{}) {
 	sectionMu.Lock()
@@ -188,43 +181,6 @@ func (this Verbose) Recordln(args ... interface{}) {
 	if this {
 		logger.Recordln(args)
     }
-}
-// ---------------------------------------------------
-func Debugf(format string, args ... interface{}) {
-	logger.Debugf(format, args)
-}
-func Infof(format string, args ... interface{}) {
-	logger.Infof(format, args)
-}
-func Warningf(format string, args ... interface{}) {
-	logger.Warningf(format, args)
-}
-func Errorf(format string, args ... interface{}) {
-	logger.Errorf(format, args)
-}
-func Fatalf(format string, args ... interface{}) {
-	logger.Fatalf(format, args)
-}
-func Recordf(format string, args ... interface{}) {
-	logger.Recordf(format, args)
-}
-func Debugln(args ... interface{}) {
-	logger.Debugln(args)
-}
-func Infoln(args ... interface{}) {
-	logger.Infoln(args)
-}
-func Warningln(args ... interface{}) {
-	logger.Warningln(args)
-}
-func Errorln(args ... interface{}) {
-	logger.Errorln(args)
-}
-func Fatalln(args ... interface{}) {
-	logger.Fatalln(args)
-}
-func Recordln(args ... interface{}) {
-	logger.Recordln(args)
 }
 // ---------------------------------------------------
 
