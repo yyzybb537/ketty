@@ -25,7 +25,10 @@ func NewAuthAop(c AuthorizeClient, s AuthorizeServer) *AuthAop {
 
 func (this *AuthAop) ClientSendMetaData(ctx context.Context, metadata map[string]string) context.Context {
 	if this.c != nil {
-		metadata[COM.AuthorizationMetaKey] = this.c.CreateAuthorization(ctx)
+		authorization := this.c.CreateAuthorization(ctx)
+		if authorization != "" {
+			metadata[COM.AuthorizationMetaKey] = authorization
+		}
 	}
 	return ctx
 }

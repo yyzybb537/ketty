@@ -28,6 +28,7 @@ type HttpServer struct {
 	driverUrl	U.Url
 	mux         *http.ServeMux
 	opts        *Options
+	handler     map[string]func(http.ResponseWriter, *http.Request)
 }
 
 func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
@@ -36,6 +37,7 @@ func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 		url : url,
 		driverUrl : driverUrl,
 		mux : http.NewServeMux(),
+		handler : make(map[string]func(http.ResponseWriter, *http.Request)),
     }
 	var err error
 	s.opts, err = ParseOptions(url.Protocol)
@@ -43,6 +45,29 @@ func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 		return nil, err
     }
 	s.Impl.Handler = s.mux
+	pattern := url.Path
+	if pattern == "" {
+		pattern = "/"
+    }
+	s.mux.HandleFunc(pattern, func(w http.ResponseWriter, httpRequest *http.Request){
+		method := httpRequest.Header.Get("KettyMethod")
+		// 兼容其他http client, 只允许注册一个Method
+		if method == "" && len(s.handler) == 1 {
+			for _, hd := range s.handler {
+				hd(w, httpRequest)
+				break
+			}
+			return
+        }
+
+		hd, exists := s.handler[method]
+		if !exists {
+			w.WriteHeader(416)
+			return
+        }
+
+		hd(w, httpRequest)
+	})
 	return s, nil
 }
 
@@ -127,7 +152,7 @@ func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType refl
 	return req.Interface().(proto.Message), nil
 }
 
-func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, requestType reflect.Type, reflectMethod reflect.Value) (rsp interface{}, ctx context.Context) {
+func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Request, requestType reflect.Type, reflectMethod reflect.Value) (rsp interface{}, ctx context.Context) {
 	ctx = context.Background()
 	var err error
 
@@ -159,13 +184,13 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 
 	aopList := this.GetAop()
 	if aopList != nil {
-		ctx = context.WithValue(ctx, "method", pattern)
+		ctx = context.WithValue(ctx, "method", fullMethodName)
 		ctx = context.WithValue(ctx, "remote", httpRequest.RemoteAddr)
 
 		for _, aop := range aopList {
-			caller, ok := aop.(A.ServerTransportMetaDataAop)
+			caller, ok := aop.(A.BeforeServerInvokeAop)
 			if ok {
-				ctx = caller.ServerRecvMetaData(ctx, metadata)
+				ctx = caller.BeforeServerInvoke(ctx, req)
 				if ctx.Err() != nil {
 					return 
 				}
@@ -173,9 +198,9 @@ func (this *HttpServer) doHandler(pattern string, httpRequest *http.Request, req
 		}
 
 		for _, aop := range aopList {
-			caller, ok := aop.(A.BeforeServerInvokeAop)
+			caller, ok := aop.(A.ServerTransportMetaDataAop)
 			if ok {
-				ctx = caller.BeforeServerInvoke(ctx, req)
+				ctx = caller.ServerRecvMetaData(ctx, metadata)
 				if ctx.Err() != nil {
 					return 
 				}
@@ -223,8 +248,8 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 	for _, method := range desc.Methods {
 		reflectMethod := iv.MethodByName(method.MethodName)
 		requestType := reflectMethod.Type().In(1).Elem()
-		pattern := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method.MethodName)
-		this.mux.HandleFunc(pattern, func(w http.ResponseWriter, httpRequest *http.Request){
+		fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method.MethodName)
+		this.handler[fullMethodName] = func(w http.ResponseWriter, httpRequest *http.Request){
 			var err error
 			defer func() {
 				if err != nil {
@@ -233,7 +258,7 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 				}
 			}()
 
-			rsp, ctx := this.doHandler(pattern, httpRequest, requestType, reflectMethod)
+			rsp, ctx := this.doHandler(fullMethodName, httpRequest, requestType, reflectMethod)
 			err = ctx.Err()
 			if err != nil {
 				return 
@@ -251,7 +276,7 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 
 			w.WriteHeader(200)
 			w.Write(buf)
-		})
+		}
 	}
 	return nil
 }

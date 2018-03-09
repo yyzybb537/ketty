@@ -42,7 +42,9 @@ func newHttpClient(url U.Url) (*HttpClient, error) {
 	return c, nil
 }
 
-func (this *HttpClient) Close() {}
+func (this *HttpClient) Close() {
+	this.tr.CloseIdleConnections()
+}
 
 func (this *HttpClient) getUrl() string {
 	return this.url.ToStringByProtocol(this.url.GetMainProtocol())
@@ -65,7 +67,6 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 	var err error
 	ctx = inCtx
 	fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method)
-	fullUrl := this.getUrl() + fullMethodName
 	metadata := map[string]string{}
 
 	aopList := A.GetAop(ctx)
@@ -74,9 +75,9 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 		ctx = context.WithValue(ctx, "remote", this.getUrl())
 
 		for _, aop := range aopList {
-			caller, ok := aop.(A.ClientTransportMetaDataAop)
+			caller, ok := aop.(A.BeforeClientInvokeAop)
 			if ok {
-				ctx = caller.ClientSendMetaData(ctx, metadata)
+				ctx = caller.BeforeClientInvoke(ctx, req)
 				if ctx.Err() != nil {
 					return
 				}
@@ -84,9 +85,9 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 		}
 
 		for _, aop := range aopList {
-			caller, ok := aop.(A.BeforeClientInvokeAop)
+			caller, ok := aop.(A.ClientTransportMetaDataAop)
 			if ok {
-				ctx = caller.BeforeClientInvoke(ctx, req)
+				ctx = caller.ClientSendMetaData(ctx, metadata)
 				if ctx.Err() != nil {
 					return
 				}
@@ -112,7 +113,7 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 	}
 
 	headers := map[string]string{
-		"Content-Type": "binary/protobuf",
+		"KettyMethod" : fullMethodName,
 	}
 
 	// 鉴权数据用Header发送
@@ -132,7 +133,7 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 		headers["KettyMetaData"] = string(metadataBuf)
 	}
 
-	err = this.doHttpRequest(fullUrl, req, rsp, headers)
+	err = this.doHttpRequest(this.getUrl(), req, rsp, headers)
 	if err != nil {
 		ctx = C.WithError(ctx, err)
 		return
@@ -148,7 +149,7 @@ func (this *HttpClient) doHttpRequest(url string, req, rsp proto.Message, header
 		return
     }
 
-	err = this.writeMessage(httpRequest, req)
+	err = this.writeMessage(httpRequest, req, headers)
 	if err != nil {
 		err = errors.WithStack(err)
 		return
@@ -192,7 +193,7 @@ func (this *HttpClient) doHttpRequest(url string, req, rsp proto.Message, header
 	return 
 }
 
-func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Message) error {
+func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Message, headers map[string]string) error {
 	_, isKettyHttpExtend := req.(KettyHttpExtend)
 	if !isKettyHttpExtend {
 		// Not extend, use default
@@ -263,6 +264,21 @@ func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Messag
 		err = tr.Write(httpRequest, buf)
 		if err != nil {
 			return err
+        }
+
+		if sTr == "body" {
+			switch sMr {
+			case "pb":
+				headers["Content-Type"] = "application/octet-stream"
+			case "querystring":
+				headers["Content-Type"] = "application/x-www-form-urlencoded"
+			case "multipart":
+				headers["Content-Type"] = "multipart/form-data; boundary=" + DefaultMultipartBoundary
+			case "json":
+				fallthrough
+			default:
+				headers["Content-Type"] = "text/plain"
+            }
         }
 	}
 

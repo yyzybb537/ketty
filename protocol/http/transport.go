@@ -32,7 +32,7 @@ func (this *BodyTransport) Write(req *http.Request, buf []byte) error {
 }
 func (this *BodyTransport) Read(req *http.Request) ([]byte, error) {
 	buf, err := ioutil.ReadAll(req.Body)
-	println("Body:", string(buf))
+	//println("Body:", string(buf))
 	return buf, err
 }
 

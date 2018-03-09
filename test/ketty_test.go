@@ -100,7 +100,7 @@ func bStartClient(b *testing.B, sUrl string) {
 }
 
 var httpUrl = "http://127.0.0.1:8091"
-var httpjsonUrl = "http.json://127.0.0.1:8092"
+var httpjsonUrl = "http.json://127.0.0.1:8092/hj/abc"
 var httpsUrl = "https://127.0.0.1:3050"
 var httpsjsonUrl = "https.json://127.0.0.1:3051"
 var grpcUrl = "grpc://127.0.0.1:8090"

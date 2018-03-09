@@ -117,7 +117,7 @@ func (this *Url) ToString() string {
 	if this.Path == "" {
 		return fmt.Sprintf("%s://%s", this.Protocol, this.SAddr)
 	} else {
-		return fmt.Sprintf("%s://%s/%s", this.Protocol, this.SAddr, this.Path)
+		return fmt.Sprintf("%s://%s%s", this.Protocol, this.SAddr, this.Path)
     }
 }
 
@@ -129,7 +129,7 @@ func (this *Url) ToStringByProtocol(protocol string) string {
 	if this.Path == "" {
 		return fmt.Sprintf("%s://%s", protocol, this.SAddr)
 	} else {
-		return fmt.Sprintf("%s://%s/%s", protocol, this.SAddr, this.Path)
+		return fmt.Sprintf("%s://%s%s", protocol, this.SAddr, this.Path)
     }
 }
 

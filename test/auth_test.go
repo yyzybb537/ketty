@@ -72,11 +72,10 @@ func startClient(t *testing.T, sUrl string, exceptError bool) {
 }
 
 var httpUrl = "http://127.0.0.1:8091"
-var httpjsonUrl = "httpjson://127.0.0.1:8092"
+var httpjsonUrl = "http.json://127.0.0.1:8092"
 var httpsUrl = "https://127.0.0.1:3050"
-var httpsjsonUrl = "httpsjson://127.0.0.1:3051"
+var httpsjsonUrl = "https.json://127.0.0.1:3051"
 var grpcUrl = "grpc://127.0.0.1:8090"
-var etcdUrl = "grpc://127.0.0.1:8090"
 var urls = []string{
 	httpUrl,
 	httpsUrl,
