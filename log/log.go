@@ -39,7 +39,7 @@ func GetLog(opt ... interface{}) LogI {
 
 	sectionMu.RLock()
 	defer sectionMu.RUnlock()
-	b, exists := sections[opt]
+	b, exists := sections[opt[0]]
 	if !exists || b {
 		return Verbose(true)
     }

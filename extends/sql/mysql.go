@@ -1,4 +1,4 @@
-package ketty
+package sql
 
 import (
 	"database/sql"
