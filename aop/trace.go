@@ -47,7 +47,8 @@ type traceIdKey struct {}
 func genTraceID() string {
 	traceId, ok := gls.Get(traceIdKey{}).(string)
 	if !ok || traceId == "" {
-		traceId = uuid.NewV4().String()
+		uuid, _ := uuid.NewV4()
+		traceId = uuid.String()
 		gls.Set(traceIdKey{}, traceId)
 	}
 	return traceId
