@@ -7,8 +7,6 @@ import (
 	U "github.com/yyzybb537/ketty/url"
 	A "github.com/yyzybb537/ketty/aop"
 	P "github.com/yyzybb537/ketty/protocol"
-	"github.com/yyzybb537/ketty/log"
-	"net"
 	"net/http"
 	"reflect"
 	"fmt"
@@ -23,7 +21,7 @@ import (
 type HttpServer struct {
 	A.AopList
 
-	Impl		*http.Server
+	router      []*Router
 	url			U.Url
 	driverUrl	U.Url
 	mux         *http.ServeMux
@@ -33,7 +31,6 @@ type HttpServer struct {
 
 func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 	s := &HttpServer {
-		Impl : &http.Server{},
 		url : url,
 		driverUrl : driverUrl,
 		mux : http.NewServeMux(),
@@ -44,30 +41,35 @@ func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 	if err != nil {
 		return nil, err
     }
-	s.Impl.Handler = s.mux
 	pattern := url.Path
 	if pattern == "" {
 		pattern = "/"
     }
-	s.mux.HandleFunc(pattern, func(w http.ResponseWriter, httpRequest *http.Request){
-		method := httpRequest.Header.Get("KettyMethod")
-		// 兼容其他http client, 只允许注册一个Method
-		if method == "" && len(s.handler) == 1 {
-			for _, hd := range s.handler {
-				hd(w, httpRequest)
-				break
+	addrs := url.GetAddrs()
+	for _, addr := range addrs {
+		s.router = append(s.router, getRouter(addr))
+	}
+	for _, r := range s.router {
+		r.Register(pattern, func(w http.ResponseWriter, httpRequest *http.Request){
+			method := httpRequest.Header.Get("KettyMethod")
+			// 兼容其他http client, 只允许注册一个Method
+			if method == "" && len(s.handler) == 1 {
+				for _, hd := range s.handler {
+					hd(w, httpRequest)
+					break
+				}
+				return
 			}
-			return
-        }
 
-		hd, exists := s.handler[method]
-		if !exists {
-			w.WriteHeader(416)
-			return
-        }
+			hd, exists := s.handler[method]
+			if !exists {
+				w.WriteHeader(416)
+				return
+			}
 
-		hd(w, httpRequest)
-	})
+			hd(w, httpRequest)
+		})
+	}
 	return s, nil
 }
 
@@ -286,38 +288,9 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 	return nil
 }
 
-func (this *HttpServer) serve(addr string, proto string) error {
-	if strings.HasPrefix(proto, "https") {
-		go func() {
-			this.Impl.Addr = U.FormatAddr(addr, this.url.Protocol)
-			err := this.Impl.ListenAndServeTLS(gCertFile, gKeyFile)
-			if err != nil {
-				log.GetLog().Errorf("Http.ServeTLS lis error:%s. addr:%s", err.Error(), addr)
-			}
-        }()
-    } else if strings.HasPrefix(proto, "http") {
-		lis, err := net.Listen("tcp", U.FormatAddr(addr, this.url.Protocol))
-		if err != nil {
-			return err
-		}
-
-		go func() {
-			err := this.Impl.Serve(lis)
-			if err != nil {
-				log.GetLog().Errorf("Http.Serve lis error:%s. addr:%s", err.Error(), addr)
-			}
-        }()
-    } else {
-		return errors.Errorf("Error protocol:%s", proto)
-    }
-
-	return nil
-}
-
 func (this *HttpServer) Serve() error {
-	addrs := this.url.GetAddrs()
-	for _, addr := range addrs {
-		err := this.serve(addr, this.url.Protocol)
+	for _, r := range this.router {
+		err := r.RServe(this.url.GetMainProtocol())
 		if err != nil {
 			return err
 		}

@@ -148,6 +148,14 @@ func TestException(t *testing.T) {
 	startClient(t, sUrl, true)
 }
 
+func TestRouter(t *testing.T) {
+	sUrl := "http.json://127.0.0.1:33099"
+	startServer(t, sUrl + "/a", "")
+	startServer(t, sUrl + "/b", "")
+	time.Sleep(time.Millisecond * 100)
+	startClient(t, sUrl + "/b", false)
+}
+
 func Benchmark_Grpc(b *testing.B) {
 	ketty.SetLog(new(kettyLog.FakeLog))
 	bStartClient(b, grpcUrl)
