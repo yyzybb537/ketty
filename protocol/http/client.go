@@ -267,22 +267,22 @@ func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Messag
 			return err
         }
 
-		if sTr == "body" {
-			var contentType string
-			switch sMr {
-			case "pb":
-				contentType = "application/octet-stream"
-			case "querystring":
-				contentType = "application/x-www-form-urlencoded"
-			case "multipart":
-				contentType = "multipart/form-data; boundary=" + DefaultMultipartBoundary
-			case "json":
-				contentType = "application/json"
-			default:
-				contentType = "text/plain"
-            }
-			httpRequest.Header.Set("Content-Type", contentType)
-        }
+		//if sTr == "body" {
+			//var contentType string
+			//switch sMr {
+			//case "pb":
+				//contentType = "application/octet-stream"
+			//case "querystring":
+				//contentType = "application/x-www-form-urlencoded"
+			//case "multipart":
+				//contentType = "multipart/form-data; boundary=" + DefaultMultipartBoundary
+			//case "json":
+				//contentType = "application/json"
+			//default:
+				//contentType = "text/plain"
+            //}
+			//httpRequest.Header.Set("Content-Type", contentType)
+        //}
 	}
 
 	return nil
