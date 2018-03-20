@@ -69,10 +69,17 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 	fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method)
 	metadata := map[string]string{}
 
+	httpRequest, err := http.NewRequest(this.opts.DefaultMethod, this.getUrl(), nil)
+	if err != nil {
+		ctx = C.WithError(ctx, errors.WithStack(err))
+		return
+    }
+
 	aopList := A.GetAop(ctx)
 	if aopList != nil {
 		ctx = context.WithValue(ctx, "method", fullMethodName)
 		ctx = context.WithValue(ctx, "remote", this.getUrl())
+		ctx = setHttpRequest(ctx, httpRequest)
 
 		for _, aop := range aopList {
 			caller, ok := aop.(A.BeforeClientInvokeAop)
@@ -133,7 +140,11 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 		headers["KettyMetaData"] = string(metadataBuf)
 	}
 
-	err = this.doHttpRequest(this.getUrl(), req, rsp, headers)
+	for k, v := range headers {
+		httpRequest.Header.Set(k, v)
+    }
+
+	err = this.doHttpRequest(httpRequest, req, rsp)
 	if err != nil {
 		ctx = C.WithError(ctx, err)
 		return
@@ -142,21 +153,11 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 	return
 }
 
-func (this *HttpClient) doHttpRequest(url string, req, rsp proto.Message, headers map[string]string) (err error) {
-	httpRequest, err := http.NewRequest(this.opts.DefaultMethod, url, nil)
+func (this *HttpClient) doHttpRequest(httpRequest *http.Request, req, rsp proto.Message) (err error) {
+	err = this.writeMessage(httpRequest, req)
 	if err != nil {
 		err = errors.WithStack(err)
 		return
-    }
-
-	err = this.writeMessage(httpRequest, req, headers)
-	if err != nil {
-		err = errors.WithStack(err)
-		return
-    }
-
-	for k, v := range headers {
-		httpRequest.Header.Set(k, v)
     }
 
 	httpResponse, err := this.client.Do(httpRequest)
@@ -193,7 +194,7 @@ func (this *HttpClient) doHttpRequest(url string, req, rsp proto.Message, header
 	return 
 }
 
-func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Message, headers map[string]string) error {
+func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Message) error {
 	_, isKettyHttpExtend := req.(KettyHttpExtend)
 	if !isKettyHttpExtend {
 		// Not extend, use default
@@ -267,18 +268,20 @@ func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Messag
         }
 
 		if sTr == "body" {
+			var contentType string
 			switch sMr {
 			case "pb":
-				headers["Content-Type"] = "application/octet-stream"
+				contentType = "application/octet-stream"
 			case "querystring":
-				headers["Content-Type"] = "application/x-www-form-urlencoded"
+				contentType = "application/x-www-form-urlencoded"
 			case "multipart":
-				headers["Content-Type"] = "multipart/form-data; boundary=" + DefaultMultipartBoundary
+				contentType = "multipart/form-data; boundary=" + DefaultMultipartBoundary
 			case "json":
-				fallthrough
+				contentType = "application/json"
 			default:
-				headers["Content-Type"] = "text/plain"
+				contentType = "text/plain"
             }
+			httpRequest.Header.Set("Content-Type", contentType)
         }
 	}
 

@@ -152,7 +152,10 @@ func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType refl
 	return req.Interface().(proto.Message), nil
 }
 
-func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Request, requestType reflect.Type, reflectMethod reflect.Value) (rsp interface{}, ctx context.Context) {
+func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Request,
+	w http.ResponseWriter, requestType reflect.Type,
+	reflectMethod reflect.Value) (rsp interface{}, ctx context.Context) {
+
 	ctx = context.Background()
 	var err error
 
@@ -186,6 +189,8 @@ func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Reque
 	if aopList != nil {
 		ctx = context.WithValue(ctx, "method", fullMethodName)
 		ctx = context.WithValue(ctx, "remote", httpRequest.RemoteAddr)
+		ctx = setHttpRequest(ctx, httpRequest)
+		ctx = setHttpResponseWriter(ctx, w)
 
 		for _, aop := range aopList {
 			caller, ok := aop.(A.BeforeServerInvokeAop)
@@ -258,7 +263,7 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 				}
 			}()
 
-			rsp, ctx := this.doHandler(fullMethodName, httpRequest, requestType, reflectMethod)
+			rsp, ctx := this.doHandler(fullMethodName, httpRequest, w, requestType, reflectMethod)
 			err = ctx.Err()
 			if err != nil {
 				return 
