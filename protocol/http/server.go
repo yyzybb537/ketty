@@ -288,8 +288,9 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 
 			//log.GetLog().Debugf("Write response: %v", buf)
 
-			w.WriteHeader(200)
-			w.Write(buf)
+			if len(buf) > 0 {
+				w.Write(buf)
+			}
 		}
 	}
 	return nil
