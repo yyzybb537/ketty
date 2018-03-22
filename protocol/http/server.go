@@ -267,7 +267,7 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 			var err error
 			defer func() {
 				if err != nil {
-					w.WriteHeader(501)
+					w.WriteHeader(http.StatusBadRequest)
 					w.Write([]byte(err.Error()))
 				}
 			}()

@@ -174,12 +174,12 @@ func (this *HttpClient) doHttpRequest(httpRequest *http.Request, req, rsp proto.
 		return
 	}
 
-	if httpResponse.StatusCode == 501 {
+	if httpResponse.StatusCode == http.StatusBadRequest {
 		err = errors.Errorf(string(buf))
 		return 
 	}
 
-	if httpResponse.StatusCode != 200 {
+	if httpResponse.StatusCode != http.StatusOK {
 		err = errors.Errorf("error http status:%d", httpResponse.StatusCode)
 		return 
 	}
