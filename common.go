@@ -4,7 +4,10 @@ import (
 	"time"
 	"golang.org/x/net/context"
 	C "github.com/yyzybb537/ketty/context"
+	COM "github.com/yyzybb537/ketty/common"
 )
+
+type ServiceHandle COM.ServiceHandle
 
 func Assert(err error) {
 	if err != nil {

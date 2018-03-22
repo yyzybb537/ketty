@@ -24,7 +24,6 @@ type HttpServer struct {
 	router      []*Router
 	url			U.Url
 	driverUrl	U.Url
-	mux         *http.ServeMux
 	opts        *Options
 	handler     map[string]func(http.ResponseWriter, *http.Request)
 }
@@ -33,7 +32,6 @@ func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 	s := &HttpServer {
 		url : url,
 		driverUrl : driverUrl,
-		mux : http.NewServeMux(),
 		handler : make(map[string]func(http.ResponseWriter, *http.Request)),
     }
 	var err error
