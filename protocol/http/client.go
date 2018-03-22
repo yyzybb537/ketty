@@ -197,14 +197,22 @@ func (this *HttpClient) doHttpRequest(httpRequest *http.Request, req, rsp proto.
 func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Message) error {
 	_, isKettyHttpExtend := req.(KettyHttpExtend)
 	if !isKettyHttpExtend {
-		// Not extend, use default
-		mr, _ := P.MgrMarshaler.Get(this.opts.DefaultMarshaler).(P.Marshaler)
+		// Not extend, use default or pb setttings.
+		sMr := this.opts.DefaultMarshaler
+		if dmr, ok := req.(DefineMarshaler); ok {
+			sMr = dmr.KettyMarshal()
+		}
+		mr, _ := P.MgrMarshaler.Get(sMr).(P.Marshaler)
 		buf, err := mr.Marshal(req)
 		if err != nil {
 			return err
         }
 
-		tr, _ := MgrTransport.Get(this.opts.DefaultTransport).(DataTransport)
+		sTr := this.opts.DefaultTransport
+		if dtr, ok := req.(DefineTransport); ok {
+			sTr = dtr.KettyTransport()
+		}
+		tr, _ := MgrTransport.Get(sTr).(DataTransport)
 		err = tr.Write(httpRequest, buf)
 		if err != nil {
 			return err

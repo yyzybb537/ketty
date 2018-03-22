@@ -19,6 +19,8 @@ message JsonReq {
 
 message Req {
     option (use_ketty_http_extend) = true;
+    // or
+    // option (mulit_tranport) = true;
 
     QueryReq qr = 1;
 

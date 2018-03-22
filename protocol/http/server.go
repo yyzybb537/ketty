@@ -72,30 +72,39 @@ func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 }
 
 func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType reflect.Type) (proto.Message, error) {
-	req := reflect.New(requestType)
-	_, isKettyHttpExtend := req.Interface().(KettyHttpExtend)
+	refReq := reflect.New(requestType)
+	req := refReq.Interface()
+	_, isKettyHttpExtend := req.(KettyHttpExtend)
 	if !isKettyHttpExtend {
 		// Not extend, use default
-		tr, _ := MgrTransport.Get(this.opts.DefaultTransport).(DataTransport)
+		sTr := this.opts.DefaultTransport
+		if dtr, ok := req.(DefineTransport); ok {
+			sTr = dtr.KettyTransport()
+		}
+		tr, _ := MgrTransport.Get(sTr).(DataTransport)
 		buf, err := tr.Read(httpRequest)
 		if err != nil {
 			return nil, err
         }
 
-		mr, _ := P.MgrMarshaler.Get(this.opts.DefaultMarshaler).(P.Marshaler)
-		err = mr.Unmarshal(buf, req.Interface().(proto.Message))
+		sMr := this.opts.DefaultMarshaler
+		if dmr, ok := req.(DefineMarshaler); ok {
+			sMr = dmr.KettyMarshal()
+		}
+		mr, _ := P.MgrMarshaler.Get(sMr).(P.Marshaler)
+		err = mr.Unmarshal(buf, req.(proto.Message))
 		if err != nil {
 			return nil, err
         }
 
-		return req.Interface().(proto.Message), nil
+		return req.(proto.Message), nil
     }
 
 	// use http extend
-	numFields := req.Elem().NumField()
+	numFields := refReq.Elem().NumField()
 	trMap := map[string]bool{}
 	for i := 0; i < numFields; i++ {
-		fvalue := req.Elem().Field(i)
+		fvalue := refReq.Elem().Field(i)
 		ftype := requestType.Field(i).Type
 		if !ftype.ConvertibleTo(typeProtoMessage) {
 			return nil, fmt.Errorf("Use http extend message, all of fields must be proto.Message! Error message name is %s", requestType.Name())
@@ -149,7 +158,7 @@ func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType refl
         }
 	}
 
-	return req.Interface().(proto.Message), nil
+	return req.(proto.Message), nil
 }
 
 func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Request,
