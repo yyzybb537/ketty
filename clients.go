@@ -14,8 +14,6 @@ import (
 	COM "github.com/yyzybb537/ketty/common"
 )
 
-type UniqMap map[string]bool
-
 // Implement Client interface, and manage multiply clients.
 type Clients struct {
 	A.AopList

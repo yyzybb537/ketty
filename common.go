@@ -5,6 +5,7 @@ import (
 	"golang.org/x/net/context"
 	C "github.com/yyzybb537/ketty/context"
 	COM "github.com/yyzybb537/ketty/common"
+	A "github.com/yyzybb537/ketty/aop"
 )
 
 type ServiceHandle COM.ServiceHandle
@@ -25,4 +26,8 @@ func Hung() {
 
 func WithError(ctx context.Context, err error) context.Context {
 	return C.WithError(ctx, err)
+}
+
+func GetTraceID() string {
+	return A.GetTraceID()
 }
