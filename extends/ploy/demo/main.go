@@ -5,7 +5,7 @@ import (
 	"github.com/yyzybb537/ketty/extends/ploy/demo/test"
 	"github.com/yyzybb537/ketty"
 	//"github.com/yyzybb537/ketty/config"
-	"context"
+	"golang.org/x/net/context"
 	"fmt"
 )
 
@@ -22,7 +22,7 @@ type Response struct {
 	Message		string
 }
 
-func (this *TestApi) Handle(ctx context.Context, req *test.TestRequest) (rsp *test.TestResponse, err error) {
+func (this *TestApi) Ping(ctx context.Context, req *test.TestRequest) (rsp *test.TestResponse, err error) {
 	iReq, err := this.reqTrans(req)
 	if err != nil {
 		return
@@ -42,10 +42,14 @@ func (this *TestApi) Handle(ctx context.Context, req *test.TestRequest) (rsp *te
 }
 
 func (this *TestApi) reqTrans(testReq *test.TestRequest) (req *Request, err error) {
+	req = &Request{}
+	req.Name = fmt.Sprintf("%d", testReq.Qr.QVal)
 	// 协议转换
 	return
 }
 func (this *TestApi) rspTrans(rsp *Response) (testRsp *test.TestResponse, err error) {
+	testRsp = &test.TestResponse{}
+	testRsp.Message = rsp.Message
 	// 协议转换
 	return
 }
@@ -79,8 +83,7 @@ func main() {
 
 type RegionFilling struct {}
 func (*RegionFilling) Run(ctx context.Context, req *Request, rsp *Response) context.Context {
-	fmt.Println(req.Name)
-	rsp.Message = "OK"
+	rsp.Message = req.Name
 	var err error
 	// todo something
 	if err != nil {
@@ -101,6 +104,7 @@ func (*TraceTest) PloyDidRun(ploy interface{}, ctx context.Context, req *Request
 }
 
 func initBidding(flow ploy.FlowI) {
+	flow.AddTrace(new(TraceTest))
 	// 填充地区并且做检索
 	flow.AddPloy(new(RegionFilling))
 }

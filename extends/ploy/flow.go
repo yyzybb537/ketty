@@ -1,7 +1,7 @@
 package ploy
 
 import (
-	"context"
+	"golang.org/x/net/context"
 	"github.com/yyzybb537/ketty/extends/ploy/fake_interface"
 	"github.com/yyzybb537/ketty"
 )

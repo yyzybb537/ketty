@@ -2,12 +2,33 @@ syntax = "proto3";
 
 package test;
 
+import "ketty.proto";
+
 service Test {
     rpc Ping(TestRequest) returns (TestResponse) {}
 }
 
+message QueryReq {
+    option (transport) = "query";
+
+    int64 qVal = 1;
+}
+
+message JsonReq {
+    option (transport) = "body";
+    option (marshal) = "json";
+
+    int64 JVal = 1;
+}
+
 message TestRequest {
-    string name = 1;
+    option (use_ketty_http_extend) = true;
+    // or
+    // option (mulit_tranport) = true;
+
+    QueryReq qr = 1;
+
+    JsonReq jr = 2;
 }
 
 message TestResponse {

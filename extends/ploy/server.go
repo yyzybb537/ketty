@@ -25,8 +25,15 @@ func (this *Server) NewFlow(router string, handle common.ServiceHandle, implemen
 	if err != nil {
 		return
 	}
-	server.RegisterMethod(handle, implement)
-	//f = NewBaseFlow()
+	err = server.RegisterMethod(handle, implement)
+	if err != nil {
+		return
+	}
+	err = setInterface(implement, NewBaseFlow(), "FlowI")
+	if err != nil {
+		return
+	}
+
 	this.servers = append(this.servers, server)
 	return err
 }

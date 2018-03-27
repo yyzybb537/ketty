@@ -3,7 +3,7 @@ package fake_interface
 import (
 	"fmt"
 	"reflect"
-	"context"
+	"golang.org/x/net/context"
 	"github.com/yyzybb537/ketty"
 )
 
@@ -74,6 +74,7 @@ func (this *FakeInterface) Do(methodName string, args ...interface{}) (ctx conte
 func parse(realizedPoint interface{}, methodName string, argsCount int) (h fakeFunc, err error) {
 	refType := reflect.TypeOf(realizedPoint)
 	if refType.Kind() != reflect.Ptr {
+		err = fmt.Errorf("invalid refType kind")
 		return
 	}
 
