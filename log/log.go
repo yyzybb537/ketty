@@ -123,62 +123,62 @@ func DisableSection(opt interface{}) {
 type Verbose bool
 func (this Verbose) Debugf(format string, args ... interface{}) {
 	if this {
-		logger.Debugf(format, args)
+		logger.Debugf(format, args ...)
     }
 }
 func (this Verbose) Infof(format string, args ... interface{}) {
 	if this {
-		logger.Infof(format, args)
+		logger.Infof(format, args ...)
     }
 }
 func (this Verbose) Warningf(format string, args ... interface{}) {
 	if this {
-		logger.Warningf(format, args)
+		logger.Warningf(format, args ...)
     }
 }
 func (this Verbose) Errorf(format string, args ... interface{}) {
 	if this {
-		logger.Errorf(format, args)
+		logger.Errorf(format, args ...)
     }
 }
 func (this Verbose) Fatalf(format string, args ... interface{}) {
 	if this {
-		logger.Fatalf(format, args)
+		logger.Fatalf(format, args ...)
     }
 }
 func (this Verbose) Recordf(format string, args ... interface{}) {
 	if this {
-		logger.Recordf(format, args)
+		logger.Recordf(format, args ...)
     }
 }
 func (this Verbose) Debugln(args ... interface{}) {
 	if this {
-		logger.Debugln(args)
+		logger.Debugln(args ...)
     }
 }
 func (this Verbose) Infoln(args ... interface{}) {
 	if this {
-		logger.Infoln(args)
+		logger.Infoln(args ...)
     }
 }
 func (this Verbose) Warningln(args ... interface{}) {
 	if this {
-		logger.Warningln(args)
+		logger.Warningln(args ...)
     }
 }
 func (this Verbose) Errorln(args ... interface{}) {
 	if this {
-		logger.Errorln(args)
+		logger.Errorln(args ...)
     }
 }
 func (this Verbose) Fatalln(args ... interface{}) {
 	if this {
-		logger.Fatalln(args)
+		logger.Fatalln(args ...)
     }
 }
 func (this Verbose) Recordln(args ... interface{}) {
 	if this {
-		logger.Recordln(args)
+		logger.Recordln(args ...)
     }
 }
 // ---------------------------------------------------
