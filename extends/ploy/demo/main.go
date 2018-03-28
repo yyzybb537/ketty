@@ -22,6 +22,10 @@ type Response struct {
 	Message		string
 }
 
+func (this *TestApi) GetHandle() ketty.ServiceHandle {
+	return test.TestHandle
+}
+
 func (this *TestApi) Ping(ctx context.Context, req *test.TestRequest) (rsp *test.TestResponse, err error) {
 	iReq, err := this.reqTrans(req)
 	if err != nil {
@@ -71,7 +75,7 @@ func main() {
 	ketty.Assert(err)
 
 	TA := &TestApi{}
-	_, err = server.NewFlow(gConfig.TestRouter, test.TestHandle, TA)
+	_, err = server.NewFlow(gConfig.TestRouter, TA)
 	ketty.Assert(err)
 	initBidding(TA.FlowI)
 

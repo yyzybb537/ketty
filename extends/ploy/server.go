@@ -3,8 +3,8 @@ package ploy
 import (
 	//"github.com/yyzybb537/ketty/extends/log"
 	//"github.com/yyzybb537/ketty/config"
-	"github.com/yyzybb537/ketty/common"
 	"github.com/yyzybb537/ketty"
+	"fmt"
 )
 
 type Server struct {
@@ -20,12 +20,21 @@ func NewServer(sUrl, sDriverUrl string) (server *Server, err error) {
 	return
 }
 
-func (this *Server) NewFlow(router string, handle common.ServiceHandle, implement interface{}) (flow FlowI, err error){
+type getHandle interface{
+	GetHandle() ketty.ServiceHandle
+}
+
+func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, err error){
+	h, ok := implement.(getHandle)
+	if !ok {
+		err = fmt.Errorf("not implement getHandle")
+		return
+	}
 	server, err := ketty.Listen(this.sUrl + router, this.sDriverUrl)
 	if err != nil {
 		return
 	}
-	err = server.RegisterMethod(handle, implement)
+	err = server.RegisterMethod(h.GetHandle(), implement)
 	if err != nil {
 		return
 	}
