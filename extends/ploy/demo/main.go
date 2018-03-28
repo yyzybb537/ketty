@@ -71,7 +71,7 @@ func main() {
 	ketty.Assert(err)
 
 	TA := &TestApi{}
-	err = server.NewFlow(gConfig.TestRouter, test.TestHandle, TA)
+	_, err = server.NewFlow(gConfig.TestRouter, test.TestHandle, TA)
 	ketty.Assert(err)
 	initBidding(TA.FlowI)
 

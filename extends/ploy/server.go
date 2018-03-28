@@ -20,7 +20,7 @@ func NewServer(sUrl, sDriverUrl string) (server *Server, err error) {
 	return
 }
 
-func (this *Server) NewFlow(router string, handle common.ServiceHandle, implement interface{}) (err error){
+func (this *Server) NewFlow(router string, handle common.ServiceHandle, implement interface{}) (flow FlowI, err error){
 	server, err := ketty.Listen(this.sUrl + router, this.sDriverUrl)
 	if err != nil {
 		return
@@ -29,13 +29,14 @@ func (this *Server) NewFlow(router string, handle common.ServiceHandle, implemen
 	if err != nil {
 		return
 	}
-	err = setInterface(implement, NewBaseFlow(), "FlowI")
+	flow = NewBaseFlow()
+	err = setInterface(implement, flow, "FlowI")
 	if err != nil {
 		return
 	}
 
 	this.servers = append(this.servers, server)
-	return err
+	return
 }
 
 func (this *Server) Serve() (err error){

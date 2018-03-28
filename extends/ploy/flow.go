@@ -12,20 +12,23 @@ type FlowI interface{
 	AddTrace(interface{})
 }
 
+type ployReqKey struct{}
+type ployRespKey struct{}
+
 func GetRequest(ctx context.Context) interface{} {
-	return ctx.Value("_ploy_request")	
+	return ctx.Value(ployReqKey{})	
 }
 
 func GetResponse(ctx context.Context) interface{} {
-	return ctx.Value("_ploy_response")
+	return ctx.Value(ployRespKey{})
 }
 
 func putRequest(ctx context.Context, request interface{}) context.Context{
-	return context.WithValue(ctx, "_ploy_request", request)	
+	return context.WithValue(ctx, ployReqKey{}, request)	
 }
 
 func putResponse(ctx context.Context, response interface{}) context.Context{
-	return context.WithValue(ctx, "_ploy_response", response)	
+	return context.WithValue(ctx, ployRespKey{}, response)	
 }
 /*
 type Ploy interface{
