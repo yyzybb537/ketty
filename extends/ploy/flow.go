@@ -12,6 +12,21 @@ type FlowI interface{
 	AddTrace(interface{})
 }
 
+func GetRequest(ctx context.Context) interface{} {
+	return ctx.Value("_ploy_request")	
+}
+
+func GetResponse(ctx context.Context) interface{} {
+	return ctx.Value("_ploy_response")
+}
+
+func putRequest(ctx context.Context, request interface{}) context.Context{
+	return context.WithValue(ctx, "_ploy_request", request)	
+}
+
+func putResponse(ctx context.Context, response interface{}) context.Context{
+	return context.WithValue(ctx, "_ploy_response", response)	
+}
 /*
 type Ploy interface{
 	Run(context.Context, any, any) context.Context
@@ -39,10 +54,15 @@ func NewBaseFlow() FlowI {
 }
 
 func (this *BaseFlow) Executor(ctx context.Context, req interface{},resp interface{}) context.Context{
+	ctx = putRequest(ctx, req)
+	ctx = putResponse(ctx, resp)
 	for _, ployFI := range this.ployFIs {
 		ctx = this.traceFI.Do("PloyWillRun", ployFI.Interface(), ctx, req, resp)
 		ctx = ployFI.Do("Run", ctx, req, resp)
 		ctx = this.traceFI.Do("PloyDidRun", ployFI.Interface(), ctx, req, resp)
+		if ctx != nil && ctx.Err() != nil {
+			return ctx
+		}
 	}
 	return ctx
 }
