@@ -4,6 +4,7 @@ import (
 	"golang.org/x/net/context"
 	"github.com/yyzybb537/ketty/extends/ploy/fake_interface"
 	"github.com/yyzybb537/ketty"
+	"fmt"
 )
 
 type FlowI interface{
@@ -75,6 +76,11 @@ func (this *BaseFlow) AddPloy(imp interface{}) {
 	ployFI.Add("Run", 3)
 	err := ployFI.Realize(imp)
 	ketty.Assert(err)
+	if len(this.ployFIs) != 0 {
+		if !ployFI.LookLike(this.ployFIs[0]) {
+			ketty.Assert(fmt.Errorf("one new ploy %s don't LookLike the first ploy %s", ployFI.RealizedTypeName(), this.ployFIs[0].RealizedTypeName()))
+		}
+	}
 	this.ployFIs = append(this.ployFIs, ployFI)
 	return
 }

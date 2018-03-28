@@ -97,6 +97,11 @@ func (*RegionFilling) Run(ctx context.Context, req *Request, rsp *Response) cont
 	return ctx
 }
 
+type RegionFilling1 struct {}
+func (*RegionFilling1) Run(ctx context.Context, req int, rsp *Response) context.Context {
+	return ctx
+}
+
 type TraceTest struct {}
 func (*TraceTest) PloyWillRun(ploy interface{}, ctx context.Context, req *Request, rsp *Response) context.Context {
 	fmt.Printf("PloyWillRun %s\n",req.Name)
@@ -111,5 +116,6 @@ func initBidding(flow ploy.FlowI) {
 	flow.AddTrace(new(TraceTest))
 	// 填充地区并且做检索
 	flow.AddPloy(new(RegionFilling))
+	flow.AddPloy(new(RegionFilling1))
 }
 

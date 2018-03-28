@@ -48,6 +48,29 @@ func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, e
 	return
 }
 
+func (this *Server) NewOverLappedFlow(router string, implement interface{}, flow FlowI) (err error) {
+	h, ok := implement.(getHandle)
+	if !ok {
+		err = fmt.Errorf("not implement getHandle")
+		return
+	}
+	server, err := ketty.Listen(this.sUrl + router, this.sDriverUrl)
+	if err != nil {
+		return
+	}
+	err = server.RegisterMethod(h.GetHandle(), implement)
+	if err != nil {
+		return
+	}
+	err = setInterface(implement, flow, "FlowI")
+	if err != nil {
+		return
+	}
+
+	this.servers = append(this.servers, server)
+	return
+}
+
 func (this *Server) Serve() (err error){
 	for _, s := range this.servers {
 		err = s.Serve()

@@ -10,21 +10,29 @@ import (
 type FakeInterface struct {
 	m				map[string]*methodDesc
 	realizedI		interface{}
-
 }
 
 type fakeFunc func(args ...interface{}) context.Context
 
 type methodDesc struct {
-	Name		string
-	ArgsCount	int
-	Handle		fakeFunc
+	Name			string
+	ArgsCount		int
+	Handle			fakeFunc
+	ArgsTypes		[]reflect.Type
 }
 
 func NewFakeInterface() *FakeInterface{
 	return &FakeInterface{
 		m:		make(map[string]*methodDesc),
     }
+}
+
+func (this *FakeInterface) RealizedTypeName() string {
+	if this.realizedI == nil {
+		return "unknown"
+	}
+	refType := reflect.TypeOf(this.realizedI)
+	return refType.String()
 }
 
 func (this *FakeInterface) Add(methodName string, argsCount int) error{
@@ -46,14 +54,33 @@ func (this *FakeInterface) Realize(realizedPoint interface{}) error{
 		this = newFI
 	}
 	for _, m := range this.m {
-		handle, err := parse(realizedPoint, m.Name, m.ArgsCount)
+		handle, argsTypes, err := parse(realizedPoint, m.Name, m.ArgsCount)
 		if err != nil {
 			return err
         }
 		m.Handle = handle
+		m.ArgsTypes = argsTypes
     }
 	this.realizedI = realizedPoint
 	return nil
+}
+
+func (this *FakeInterface) LookLike(other *FakeInterface) bool {
+	if this.realizedI == nil {
+		return false
+	}
+	for otherMethodName, otherMethod := range other.m {
+		myMethod, ok := this.m[otherMethodName]
+		if !ok {
+			return false
+		}
+		for i, otherMethodArgsType := range otherMethod.ArgsTypes {
+			if !myMethod.ArgsTypes[i].AssignableTo(otherMethodArgsType) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (this *FakeInterface) Interface() interface{} {
@@ -71,7 +98,7 @@ func (this *FakeInterface) Do(methodName string, args ...interface{}) (ctx conte
 	return m.Handle(args...)
 }
 
-func parse(realizedPoint interface{}, methodName string, argsCount int) (h fakeFunc, err error) {
+func parse(realizedPoint interface{}, methodName string, argsCount int) (h fakeFunc, argsTypes []reflect.Type, err error) {
 	refType := reflect.TypeOf(realizedPoint)
 	if refType.Kind() != reflect.Ptr {
 		err = fmt.Errorf("invalid refType kind")
@@ -100,6 +127,11 @@ func parse(realizedPoint interface{}, methodName string, argsCount int) (h fakeF
 			err = fmt.Errorf("invalid return arg: method %s, want: Context, real: %s", methodName, 1, methodType.Type.Out(0).Name())
 			return
         }
+
+
+		for i := 1;i < methodType.Type.NumIn();i++ {
+			argsTypes = append(argsTypes, methodType.Type.In(i))
+		}
 
 		methodValue := refValue.Method(i)
 		h = func(args ...interface{}) (ctx context.Context){
