@@ -8,6 +8,7 @@ import (
 	"github.com/yyzybb537/ketty/common"
 	U "github.com/yyzybb537/ketty/url"
 	P "github.com/yyzybb537/ketty/protocol"
+	O "github.com/yyzybb537/ketty/option"
 	B "github.com/yyzybb537/ketty/balancer"
 	D "github.com/yyzybb537/ketty/driver"
 	A "github.com/yyzybb537/ketty/aop"
@@ -20,6 +21,7 @@ type Clients struct {
 
 	url       U.Url
 	balancer  B.Balancer
+	opt       O.OptionI
 
 	// manage all of address
 	addrMtx   sync.Mutex
@@ -78,6 +80,9 @@ func (this *Clients) dialProtocol(proto P.Protocol) error {
 	if err != nil {
 		return err
 	}
+	if this.opt != nil {
+		client.SetOption(this.opt)
+	}
 
 	this.url.MetaData = client
 	this.balancer.Up(this.url)
@@ -135,6 +140,9 @@ func (this *Clients) dialDriver(driver D.Driver) error {
 					continue
                 }
 				client := newClients(url, this.balancer, this.root)
+				if this.opt != nil {
+					client.SetOption(this.opt)
+				}
 				url.MetaData = client
 				this.addrs[key] = url
 				this.addrMtx.Unlock()
@@ -197,6 +205,11 @@ func (this *Clients) Close() {
 	for _, f := range onClose {
 		f()
     }
+}
+
+func (this *Clients) SetOption(opt O.OptionI) error {
+	this.opt = opt
+	return nil
 }
 
 func (this *Clients) Invoke(ctx context.Context, handle COM.ServiceHandle, method string, req, rsp interface{}) error {

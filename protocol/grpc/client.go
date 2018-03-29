@@ -3,6 +3,7 @@ package grpc_proto
 import (
 	"fmt"
 	A "github.com/yyzybb537/ketty/aop"
+	O "github.com/yyzybb537/ketty/option"
 	COM "github.com/yyzybb537/ketty/common"
 	C "github.com/yyzybb537/ketty/context"
 	U "github.com/yyzybb537/ketty/url"
@@ -15,16 +16,22 @@ type GrpcClient struct {
 
 	Impl *grpc.ClientConn
 	url  U.Url
+	opt  *GrpcOption
 }
 
 func newGrpcClient(url U.Url) (*GrpcClient, error) {
 	c := new(GrpcClient)
 	c.url = url
+	c.opt = defaultGrpcOption()
 	err := c.dial(url)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
+}
+
+func (this *GrpcClient) SetOption(opt O.OptionI) error {
+	return this.opt.set(opt)
 }
 
 func (this *GrpcClient) dial(url U.Url) (err error) {

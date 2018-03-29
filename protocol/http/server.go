@@ -6,6 +6,7 @@ import (
 	D "github.com/yyzybb537/ketty/driver"
 	U "github.com/yyzybb537/ketty/url"
 	A "github.com/yyzybb537/ketty/aop"
+	O "github.com/yyzybb537/ketty/option"
 	P "github.com/yyzybb537/ketty/protocol"
 	"net/http"
 	"reflect"
@@ -24,7 +25,8 @@ type HttpServer struct {
 	router      []*Router
 	url			U.Url
 	driverUrl	U.Url
-	opts        *Options
+	prt         *Proto
+	opt        *HttpOption
 	handler     map[string]func(http.ResponseWriter, *http.Request)
 }
 
@@ -32,10 +34,11 @@ func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 	s := &HttpServer {
 		url : url,
 		driverUrl : driverUrl,
+		opt : defaultHttpOption(),
 		handler : make(map[string]func(http.ResponseWriter, *http.Request)),
     }
 	var err error
-	s.opts, err = ParseOptions(url.Protocol)
+	s.prt, err = ParseProto(url.Protocol)
 	if err != nil {
 		return nil, err
     }
@@ -71,13 +74,17 @@ func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 	return s, nil
 }
 
+func (this *HttpServer) SetOption(opt O.OptionI) error {
+	return this.opt.set(opt)
+}
+
 func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType reflect.Type) (proto.Message, error) {
 	refReq := reflect.New(requestType)
 	req := refReq.Interface()
 	_, isKettyHttpExtend := req.(KettyHttpExtend)
 	if !isKettyHttpExtend {
 		// Not extend, use default
-		sTr := this.opts.DefaultTransport
+		sTr := this.prt.DefaultTransport
 		if dtr, ok := req.(DefineTransport); ok {
 			sTr = dtr.KettyTransport()
 		}
@@ -87,7 +94,7 @@ func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType refl
 			return nil, err
         }
 
-		sMr := this.opts.DefaultMarshaler
+		sMr := this.prt.DefaultMarshaler
 		if dmr, ok := req.(DefineMarshaler); ok {
 			sMr = dmr.KettyMarshal()
 		}
@@ -111,7 +118,7 @@ func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType refl
         }
 		fvalue.Set(reflect.New(ftype.Elem()))
 
-		sTr := this.opts.DefaultTransport
+		sTr := this.prt.DefaultTransport
 		if ftype.ConvertibleTo(typeDefineTransport) {
 			sTr = fvalue.Convert(typeDefineTransport).Interface().(DefineTransport).KettyTransport()
         }
@@ -137,7 +144,7 @@ func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType refl
 			continue
         }
 
-		sMr := this.opts.DefaultMarshaler
+		sMr := this.prt.DefaultMarshaler
 		if ftype.ConvertibleTo(typeDefineMarshaler) {
 			sMr = fvalue.Convert(typeDefineMarshaler).Interface().(DefineMarshaler).KettyMarshal()
         }
@@ -280,7 +287,7 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 
 			// body
 			var buf []byte
-			mr, _ := P.MgrMarshaler.Get(this.opts.DefaultMarshaler).(P.Marshaler)
+			mr, _ := P.MgrMarshaler.Get(this.prt.DefaultMarshaler).(P.Marshaler)
 			buf, err = mr.Marshal(rsp.(proto.Message))
 			if err != nil {
 				return 

@@ -3,6 +3,7 @@ package grpc_proto
 import (
 	C "github.com/yyzybb537/ketty/context"
 	D "github.com/yyzybb537/ketty/driver"
+	O "github.com/yyzybb537/ketty/option"
 	COM "github.com/yyzybb537/ketty/common"
 	U "github.com/yyzybb537/ketty/url"
 	A "github.com/yyzybb537/ketty/aop"
@@ -20,15 +21,21 @@ type GrpcServer struct {
 	url       U.Url
 	driverUrl U.Url
 	Impl      *grpc.Server
+	opt		  *GrpcOption
 }
 
 func newGrpcServer(url, driverUrl U.Url) *GrpcServer {
 	s := &GrpcServer{
 		url:       url,
+		opt : defaultGrpcOption(),
 		driverUrl: driverUrl,
 	}
 	s.Impl = grpc.NewServer(grpc.UnaryInterceptor(s.serverIntercept()))
 	return s
+}
+
+func (this *GrpcServer) SetOption(opt O.OptionI) error {
+	return this.opt.set(opt)
 }
 
 func (this *GrpcServer) RegisterMethod(handle COM.ServiceHandle, implement interface{}) error {

@@ -1,21 +1,22 @@
 package http_proto
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	A "github.com/yyzybb537/ketty/aop"
+	O "github.com/yyzybb537/ketty/option"
 	COM "github.com/yyzybb537/ketty/common"
 	C "github.com/yyzybb537/ketty/context"
 	P "github.com/yyzybb537/ketty/protocol"
 	U "github.com/yyzybb537/ketty/url"
 	"golang.org/x/net/context"
-	"strings"
-	"reflect"
-	"net/http"
-	"crypto/tls"
 	"io/ioutil"
+	"net/http"
+	"reflect"
+	"strings"
 )
 
 type HttpClient struct {
@@ -24,22 +25,27 @@ type HttpClient struct {
 	url    U.Url
 	tr     *http.Transport
 	client *http.Client
-	opts   *Options
+	prt    *Proto
+	opt    *HttpOption
 }
 
 func newHttpClient(url U.Url) (*HttpClient, error) {
 	c := new(HttpClient)
 	c.url = url
 	var err error
-	c.opts, err = ParseOptions(url.Protocol)
+	c.prt, err = ParseProto(url.Protocol)
 	if err != nil {
 		return nil, err
 	}
 	c.tr = &http.Transport{
-        TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
-    }
-    c.client = &http.Client{Transport: c.tr}
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	c.client = &http.Client{Transport: c.tr}
 	return c, nil
+}
+
+func (this *HttpClient) SetOption(opt O.OptionI) error {
+	return this.opt.set(opt)
 }
 
 func (this *HttpClient) Close() {
@@ -69,11 +75,11 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 	fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method)
 	metadata := map[string]string{}
 
-	httpRequest, err := http.NewRequest(this.opts.DefaultMethod, this.getUrl(), nil)
+	httpRequest, err := http.NewRequest(this.prt.DefaultMethod, this.getUrl(), nil)
 	if err != nil {
 		ctx = C.WithError(ctx, errors.WithStack(err))
 		return
-    }
+	}
 
 	aopList := A.GetAop(ctx)
 	if aopList != nil {
@@ -120,7 +126,7 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 	}
 
 	headers := map[string]string{
-		"KettyMethod" : fullMethodName,
+		"KettyMethod": fullMethodName,
 	}
 
 	// 鉴权数据用Header发送
@@ -142,7 +148,7 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 
 	for k, v := range headers {
 		httpRequest.Header.Set(k, v)
-    }
+	}
 
 	err = this.doHttpRequest(httpRequest, req, rsp)
 	if err != nil {
@@ -158,13 +164,13 @@ func (this *HttpClient) doHttpRequest(httpRequest *http.Request, req, rsp proto.
 	if err != nil {
 		err = errors.WithStack(err)
 		return
-    }
+	}
 
 	httpResponse, err := this.client.Do(httpRequest)
 	if err != nil {
 		err = errors.WithStack(err)
 		return
-    }
+	}
 	defer httpResponse.Body.Close()
 
 	var buf []byte
@@ -176,29 +182,29 @@ func (this *HttpClient) doHttpRequest(httpRequest *http.Request, req, rsp proto.
 
 	if httpResponse.StatusCode == http.StatusBadRequest {
 		err = errors.Errorf(string(buf))
-		return 
+		return
 	}
 
 	if httpResponse.StatusCode != http.StatusOK {
 		err = errors.Errorf("error http status:%d", httpResponse.StatusCode)
-		return 
+		return
 	}
 
-	mr, _ := P.MgrMarshaler.Get(this.opts.DefaultMarshaler).(P.Marshaler)
+	mr, _ := P.MgrMarshaler.Get(this.prt.DefaultMarshaler).(P.Marshaler)
 	err = mr.Unmarshal(buf, rsp)
 	if err != nil {
 		err = errors.WithStack(err)
 		return
 	}
 
-	return 
+	return
 }
 
 func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Message) error {
 	_, isKettyHttpExtend := req.(KettyHttpExtend)
 	if !isKettyHttpExtend {
 		// Not extend, use default or pb setttings.
-		sMr := this.opts.DefaultMarshaler
+		sMr := this.prt.DefaultMarshaler
 		if dmr, ok := req.(DefineMarshaler); ok {
 			sMr = dmr.KettyMarshal()
 		}
@@ -206,9 +212,9 @@ func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Messag
 		buf, err := mr.Marshal(req)
 		if err != nil {
 			return err
-        }
+		}
 
-		sTr := this.opts.DefaultTransport
+		sTr := this.prt.DefaultTransport
 		if dtr, ok := req.(DefineTransport); ok {
 			sTr = dtr.KettyTransport()
 		}
@@ -216,7 +222,7 @@ func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Messag
 		err = tr.Write(httpRequest, buf)
 		if err != nil {
 			return err
-        }
+		}
 
 		return nil
 	}
@@ -231,17 +237,17 @@ func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Messag
 		ftype := typ.Field(i).Type
 		if !ftype.ConvertibleTo(typeProtoMessage) {
 			return fmt.Errorf("Use http extend message, all of fields must be proto.Message! Error message name is %s", typ.Name())
-        }
+		}
 
 		if fvalue.Interface() == nil {
 			// skip nil message
 			continue
 		}
 
-		sTr := this.opts.DefaultTransport
+		sTr := this.prt.DefaultTransport
 		if ftype.ConvertibleTo(typeDefineTransport) {
 			sTr = fvalue.Convert(typeDefineTransport).Interface().(DefineTransport).KettyTransport()
-        }
+		}
 
 		// check tr unique
 		if _, exists := trMap[sTr]; exists {
@@ -249,50 +255,48 @@ func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Messag
 		}
 		trMap[sTr] = true
 
-		sMr := this.opts.DefaultMarshaler
+		sMr := this.prt.DefaultMarshaler
 		if ftype.ConvertibleTo(typeDefineMarshaler) {
 			sMr = fvalue.Convert(typeDefineMarshaler).Interface().(DefineMarshaler).KettyMarshal()
-        }
+		}
 		if sTr == "query" {
 			sMr = "querystring"
 		}
 		mr, ok := P.MgrMarshaler.Get(sMr).(P.Marshaler)
 		if !ok {
 			return fmt.Errorf("Unknown marshal(%s) in message:%s", sMr, ftype.Name())
-        }
+		}
 		buf, err := mr.Marshal(fvalue.Interface().(proto.Message))
 		if err != nil {
 			return err
-        }
-
+		}
 
 		tr, ok := MgrTransport.Get(sTr).(DataTransport)
 		if !ok {
 			return fmt.Errorf("Unknown transport(%s) in message:%s", sTr, ftype.Name())
-        }
+		}
 		err = tr.Write(httpRequest, buf)
 		if err != nil {
 			return err
-        }
+		}
 
 		//if sTr == "body" {
-			//var contentType string
-			//switch sMr {
-			//case "pb":
-				//contentType = "application/octet-stream"
-			//case "querystring":
-				//contentType = "application/x-www-form-urlencoded"
-			//case "multipart":
-				//contentType = "multipart/form-data; boundary=" + DefaultMultipartBoundary
-			//case "json":
-				//contentType = "application/json"
-			//default:
-				//contentType = "text/plain"
-            //}
-			//httpRequest.Header.Set("Content-Type", contentType)
-        //}
+		//var contentType string
+		//switch sMr {
+		//case "pb":
+		//contentType = "application/octet-stream"
+		//case "querystring":
+		//contentType = "application/x-www-form-urlencoded"
+		//case "multipart":
+		//contentType = "multipart/form-data; boundary=" + DefaultMultipartBoundary
+		//case "json":
+		//contentType = "application/json"
+		//default:
+		//contentType = "text/plain"
+		//}
+		//httpRequest.Header.Set("Content-Type", contentType)
+		//}
 	}
 
 	return nil
 }
-

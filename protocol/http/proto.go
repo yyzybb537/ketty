@@ -6,14 +6,14 @@ import (
 	P "github.com/yyzybb537/ketty/protocol"
 )
 
-type Options struct {
+type Proto struct {
 	DefaultMethod    string
 	DefaultMarshaler string
 	DefaultTransport string
 }
 
-func ParseOptions(protocol string) (*Options, error) {
-	opt := &Options{}
+func ParseProto(protocol string) (*Proto, error) {
+	opt := &Proto{}
 	ss := strings.Split(protocol, ".")
 	if len(ss) > 1 {
 		ss = ss[1:]
