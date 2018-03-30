@@ -71,6 +71,10 @@ func (this *BaseFlow) Executor(ctx context.Context, req interface{},resp interfa
 	return ctx
 }
 
+type _init interface {
+	Init() 
+}
+
 func (this *BaseFlow) AddPloy(imp interface{}) {
 	ployFI := fake_interface.NewFakeInterface()
 	ployFI.Add("Run", 3)
@@ -80,6 +84,10 @@ func (this *BaseFlow) AddPloy(imp interface{}) {
 		if !ployFI.LookLike(this.ployFIs[0]) {
 			ketty.Assert(fmt.Errorf("one new ploy %s don't LookLike the first ploy %s", ployFI.RealizedTypeName(), this.ployFIs[0].RealizedTypeName()))
 		}
+	}
+	i, ok := imp.(_init)
+	if ok {
+		i.Init()
 	}
 	this.ployFIs = append(this.ployFIs, ployFI)
 	return

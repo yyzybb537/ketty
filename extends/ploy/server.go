@@ -27,7 +27,7 @@ type getHandle interface{
 func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, err error){
 	h, ok := implement.(getHandle)
 	if !ok {
-		err = fmt.Errorf("not implement getHandle")
+		err = fmt.Errorf("not implement GetHandle")
 		return
 	}
 	server, err := ketty.Listen(this.sUrl + router, this.sDriverUrl)
@@ -43,7 +43,10 @@ func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, e
 	if err != nil {
 		return
 	}
-
+	i, ok := implement.(_init)
+	if ok {
+		i.Init()
+	}
 	this.servers = append(this.servers, server)
 	return
 }
