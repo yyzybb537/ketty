@@ -7,9 +7,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	A "github.com/yyzybb537/ketty/aop"
-	O "github.com/yyzybb537/ketty/option"
 	COM "github.com/yyzybb537/ketty/common"
 	C "github.com/yyzybb537/ketty/context"
+	O "github.com/yyzybb537/ketty/option"
 	P "github.com/yyzybb537/ketty/protocol"
 	U "github.com/yyzybb537/ketty/url"
 	"golang.org/x/net/context"
@@ -75,7 +75,7 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 	fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method)
 	metadata := map[string]string{}
 
-	httpRequest, err := http.NewRequest(this.prt.DefaultMethod, this.getUrl(), nil)
+	httpRequest, err := http.NewRequest(strings.ToUpper(this.prt.DefaultMethod), this.getUrl(), nil)
 	if err != nil {
 		ctx = C.WithError(ctx, errors.WithStack(err))
 		return
@@ -280,22 +280,22 @@ func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Messag
 			return err
 		}
 
-		//if sTr == "body" {
-		//var contentType string
-		//switch sMr {
-		//case "pb":
-		//contentType = "application/octet-stream"
-		//case "querystring":
-		//contentType = "application/x-www-form-urlencoded"
-		//case "multipart":
-		//contentType = "multipart/form-data; boundary=" + DefaultMultipartBoundary
-		//case "json":
-		//contentType = "application/json"
-		//default:
-		//contentType = "text/plain"
-		//}
-		//httpRequest.Header.Set("Content-Type", contentType)
-		//}
+		if sTr == "body" {
+			var contentType string
+			switch sMr {
+			case "pb":
+				contentType = "application/octet-stream"
+			case "querystring":
+				contentType = "application/x-www-form-urlencoded"
+			case "multipart":
+				contentType = "multipart/form-data; boundary=" + DefaultMultipartBoundary
+			case "json":
+				contentType = "application/json"
+			default:
+				contentType = "text/plain"
+			}
+			httpRequest.Header.Set("Content-Type", contentType)
+		}
 	}
 
 	return nil
