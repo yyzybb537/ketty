@@ -45,3 +45,7 @@ func (this *RealLog) Recordln(args ...interface{}) {
 	//TODO 独立打印日志
 	glog.Infoln(args ...)
 }
+func (this *RealLog) Flush() error {
+	glog.Flush()
+	return nil
+}

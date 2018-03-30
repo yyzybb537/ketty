@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"os"
 	"github.com/yyzybb537/gls"
 )
 
@@ -24,6 +25,8 @@ type LogI interface {
 	Errorln(args ... interface{})
 	Fatalln(args ... interface{})
 	Recordln(args ... interface{})
+
+	Flush() error
 }
 
 var logger LogI = &StdLog{}
@@ -181,6 +184,12 @@ func (this Verbose) Recordln(args ... interface{}) {
 		logger.Recordln(args ...)
     }
 }
+func (this Verbose) Flush() error {
+	if this {
+		return logger.Flush()
+	}
+	return nil
+}
 // ---------------------------------------------------
 
 
@@ -197,6 +206,7 @@ func (this *FakeLog) Warningln(args ... interface{}) {}
 func (this *FakeLog) Errorln(args ... interface{}) {}
 func (this *FakeLog) Fatalln(args ... interface{}) {}
 func (this *FakeLog) Recordln(args ... interface{}) {}
+func (this *FakeLog) Flush() error { return nil }
 
 type StdLog struct {}
 func (this *StdLog) header(level Level) string {
@@ -254,4 +264,7 @@ func (this *StdLog) Fatalln(args ... interface{}) {
 }
 func (this *StdLog) Recordln(args ... interface{}) {
 	this.logln(lv_record, args...)
+}
+func (this *StdLog) Flush() error {
+	return os.Stdout.Sync()
 }

@@ -13,7 +13,7 @@ type ServiceHandle COM.ServiceHandle
 
 func Assert(err error) {
 	if err != nil {
-		panic(fmt.Sprintf("%+v", err))
+		panic(fmt.Sprintf("%s\n ---- \n%+v\n ---- \n", err.Error(), err))
     }
 }
 
