@@ -87,10 +87,7 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 	metadata := map[string]string{}
 
 	httpRequest, err := http.NewRequest(strings.ToUpper(this.prt.DefaultMethod), this.getUrl(), nil)
-	if err != nil {
-		ctx = C.WithError(ctx, errors.WithStack(err))
-		return
-	}
+	ctx = C.WithError(ctx, errors.WithStack(err))
 
 	aopList := A.GetAop(ctx)
 	if aopList != nil {
@@ -102,9 +99,6 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 			caller, ok := aop.(A.BeforeClientInvokeAop)
 			if ok {
 				ctx = caller.BeforeClientInvoke(ctx, req)
-				if ctx.Err() != nil {
-					return
-				}
 			}
 		}
 
@@ -112,9 +106,6 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 			caller, ok := aop.(A.ClientTransportMetaDataAop)
 			if ok {
 				ctx = caller.ClientSendMetaData(ctx, metadata)
-				if ctx.Err() != nil {
-					return
-				}
 			}
 		}
 
@@ -134,6 +125,10 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 				defer caller.AfterClientInvoke(&ctx, req, rsp)
 			}
 		}
+	}
+
+	if ctx.Err() != nil {
+		return
 	}
 
 	headers := map[string]string{

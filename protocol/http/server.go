@@ -199,10 +199,7 @@ func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Reque
 
 	// 解析Message
 	req, err := this.parseMessage(httpRequest, requestType)
-	if err != nil {
-		ctx = C.WithError(ctx, errors.WithStack(err))
-		return 
-	}
+	ctx = C.WithError(ctx, errors.WithStack(err))
 
 	aopList := this.GetAop()
 	if aopList != nil {
@@ -215,9 +212,6 @@ func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Reque
 			caller, ok := aop.(A.BeforeServerInvokeAop)
 			if ok {
 				ctx = caller.BeforeServerInvoke(ctx, req)
-				if ctx.Err() != nil {
-					return 
-				}
 			}
 		}
 
@@ -225,9 +219,6 @@ func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Reque
 			caller, ok := aop.(A.ServerTransportMetaDataAop)
 			if ok {
 				ctx = caller.ServerRecvMetaData(ctx, metadata)
-				if ctx.Err() != nil {
-					return 
-				}
 			}
 		}
 
@@ -247,6 +238,10 @@ func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Reque
 				defer caller.AfterServerInvoke(&ctx, req, rsp)
 			}
 		}
+	}
+
+	if ctx.Err() != nil {
+		return 
 	}
 
 	replies := reflectMethod.Call([]reflect.Value{reflect.ValueOf(context.Background()), reflect.ValueOf(req)})

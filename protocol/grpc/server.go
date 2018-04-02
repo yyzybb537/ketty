@@ -120,9 +120,6 @@ func (this *GrpcServer) unaryServerInterceptorWithContext(inCtx context.Context,
 			caller, ok := aop.(A.ServerTransportMetaDataAop)
 			if ok {
 				ctx = caller.ServerRecvMetaData(ctx, metadata)
-				if ctx.Err() != nil {
-					return
-				}
 			}
 		}
 
@@ -130,9 +127,6 @@ func (this *GrpcServer) unaryServerInterceptorWithContext(inCtx context.Context,
 			caller, ok := aop.(A.BeforeServerInvokeAop)
 			if ok {
 				ctx = caller.BeforeServerInvoke(ctx, req)
-				if ctx.Err() != nil {
-					return
-				}
 			}
 		}
 
@@ -152,6 +146,10 @@ func (this *GrpcServer) unaryServerInterceptorWithContext(inCtx context.Context,
 				defer caller.AfterServerInvoke(&ctx, req, rsp)
 			}
 		}
+	}
+
+	if ctx.Err() != nil {
+		return
 	}
 
 	rsp, err = handler(ctx, req)

@@ -69,9 +69,6 @@ func (this *GrpcClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 			caller, ok := aop.(A.ClientTransportMetaDataAop)
 			if ok {
 				ctx = caller.ClientSendMetaData(ctx, metadata)
-				if ctx.Err() != nil {
-					return
-				}
 			}
 		}
 
@@ -79,9 +76,6 @@ func (this *GrpcClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 			caller, ok := aop.(A.BeforeClientInvokeAop)
 			if ok {
 				ctx = caller.BeforeClientInvoke(ctx, req)
-				if ctx.Err() != nil {
-					return
-				}
 			}
 		}
 
@@ -101,6 +95,10 @@ func (this *GrpcClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 				defer caller.AfterClientInvoke(&ctx, req, rsp)
 			}
 		}
+	}
+
+	if ctx.Err() != nil {
+		return
 	}
 
 	err = grpc.Invoke(ctx, fullMethodName, req, rsp, this.Impl)
