@@ -214,6 +214,7 @@ func (this *Clients) SetOption(opt O.OptionI) error {
 	for _, url := range this.addrs {
 		url.MetaData.(P.Client).SetOption(this.opt)
 	}
+	this.url.MetaData.(P.Client).SetOption(this.opt)
 	return nil
 }
 

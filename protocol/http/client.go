@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"time"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	A "github.com/yyzybb537/ketty/aop"
@@ -37,6 +38,8 @@ func newHttpClient(url U.Url) (*HttpClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.opt = defaultHttpOption()
+	//SetOption的话需要重新设置超时等等选项
 	c.tr = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -45,7 +48,15 @@ func newHttpClient(url U.Url) (*HttpClient, error) {
 }
 
 func (this *HttpClient) SetOption(opt O.OptionI) error {
-	return this.opt.set(opt)
+	err := this.opt.set(opt)
+	if err != nil {
+		return err
+	}
+	this.tr = DefaultTransportManager.GetTransport(time.Duration(this.opt.ConnectTimeoutMillseconds) * time.Millisecond,
+		time.Duration(this.opt.ReadWriteTimeoutMillseconds) * time.Millisecond,
+		time.Duration(this.opt.ResponseHeaderTimeoutMillseconds) * time.Millisecond)
+	this.client.Timeout = time.Duration(this.opt.TimeoutMilliseconds) * time.Millisecond
+	return nil
 }
 
 func (this *HttpClient) Close() {

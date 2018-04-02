@@ -75,6 +75,9 @@ func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
 }
 
 func (this *HttpServer) SetOption(opt O.OptionI) error {
+	for _, r := range this.router {
+		r.opt = this.opt
+	}
 	return this.opt.set(opt)
 }
 

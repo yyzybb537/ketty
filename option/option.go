@@ -6,8 +6,7 @@ type OptionI interface{}
 type Option struct {
 	OptionI
 
-	ReadTimeoutMilliseconds int64
-	WriteTimeoutMilliseconds int64
+	TimeoutMilliseconds int64
 }
 
 func DefaultOption() *Option {

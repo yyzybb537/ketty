@@ -2,6 +2,7 @@ package grpc_proto
 
 import (
 	"fmt"
+	"time"
 	A "github.com/yyzybb537/ketty/aop"
 	O "github.com/yyzybb537/ketty/option"
 	COM "github.com/yyzybb537/ketty/common"
@@ -51,7 +52,11 @@ func (this *GrpcClient) Invoke(ctx context.Context, handle COM.ServiceHandle, me
 
 func (this *GrpcClient) invoke(inCtx context.Context, handle COM.ServiceHandle, method string, req, rsp interface{}) (ctx context.Context) {
 	var err error
-	ctx = inCtx
+	if this.opt.TimeoutMilliseconds != 0 {
+		ctx, _ = context.WithTimeout(inCtx, time.Duration(this.opt.TimeoutMilliseconds) * time.Millisecond)
+	}else {
+		ctx = inCtx
+	}
 	fullMethodName := fmt.Sprintf("/%s/%s", handle.ServiceName(), method)
 	aopList := A.GetAop(ctx)
 	if aopList != nil {

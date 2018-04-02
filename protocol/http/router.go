@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type Router struct {
@@ -15,6 +16,7 @@ type Router struct {
 	addr string
 	proto string
 	served bool
+	opt        *HttpOption
 }
 
 var gRouters = map[string]*Router{}
@@ -50,6 +52,10 @@ func (this *Router) RServe(proto string) error {
 		return nil
     }
 
+	if this.opt != nil {
+		this.Server.WriteTimeout = time.Duration(this.opt.Option.TimeoutMilliseconds) * time.Millisecond
+		this.Server.ReadTimeout = time.Duration(this.opt.Option.TimeoutMilliseconds) * time.Millisecond
+	}
 	if proto == "https" {
 		go func() {
 			this.Addr = U.FormatAddr(this.addr, proto)

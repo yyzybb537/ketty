@@ -3,6 +3,7 @@ package main
 import (
 	ext_pb "github.com/yyzybb537/ketty/demo/extpb"
 	"github.com/yyzybb537/ketty"
+	http "github.com/yyzybb537/ketty/protocol/http"
 	"golang.org/x/net/context"
 )
 
@@ -13,6 +14,14 @@ func main() {
 		return
 	}
 	defer client.Close()
+
+	opt := &http.HttpOption{}
+	//opt.ConnectTimeoutMillseconds = 100
+	opt.TimeoutMilliseconds = 1000
+	//opt.ResponseHeaderTimeoutMillseconds = 100
+
+	err = client.SetOption(opt)
+	ketty.Assert(err)
 
 	req := &ext_pb.Req{
 		Qr : &ext_pb.QueryReq{ QVal : 123 },

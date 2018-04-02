@@ -7,6 +7,9 @@ import (
 
 type HttpOption struct {
 	O.Option
+	ConnectTimeoutMillseconds			int64
+	ReadWriteTimeoutMillseconds			int64
+	ResponseHeaderTimeoutMillseconds	int64
 }
 
 func defaultHttpOption() *HttpOption {

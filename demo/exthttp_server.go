@@ -3,6 +3,7 @@ package main
 import (
 	ext_pb "github.com/yyzybb537/ketty/demo/extpb"
 	"github.com/yyzybb537/ketty"
+	http "github.com/yyzybb537/ketty/protocol/http"
 	"golang.org/x/net/context"
 )
 
@@ -18,6 +19,12 @@ func main() {
 	if err != nil {
 		ketty.GetLog().Errorf("Listen error:%+v", err)
 	}
+	
+	opt := &http.HttpOption{}
+	opt.TimeoutMilliseconds = 100
+
+	err = server.SetOption(opt)
+	ketty.Assert(err)
 
 	server.RegisterMethod(ext_pb.EchoServiceHandle, &EchoServer{})
 
