@@ -113,7 +113,7 @@ func (*TraceTest) PloyDidRun(ploy interface{}, ctx context.Context, req *Request
 }
 
 func initBidding(flow ploy.FlowI) {
-	flow.AddTrace(new(TraceTest))
+	//flow.AddTrace(new(TraceTest))
 	// 填充地区并且做检索
 	flow.AddPloy(new(RegionFilling))
 	flow.AddPloy(new(RegionFilling1))

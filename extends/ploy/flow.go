@@ -42,8 +42,9 @@ type Trace interface{
 */
 
 type BaseFlow struct {
-	ployFIs		[]*fake_interface.FakeInterface
-	traceFI		*fake_interface.FakeInterface
+	ployFIs			[]*fake_interface.FakeInterface
+	traceFI			*fake_interface.FakeInterface
+	realizeTrace	bool
 }
 
 func NewBaseFlow() FlowI {
@@ -61,9 +62,13 @@ func (this *BaseFlow) Executor(ctx context.Context, req interface{},resp interfa
 	ctx = putRequest(ctx, req)
 	ctx = putResponse(ctx, resp)
 	for _, ployFI := range this.ployFIs {
-		ctx = this.traceFI.Do("PloyWillRun", ployFI.Interface(), ctx, req, resp)
+		if this.realizeTrace {
+			ctx = this.traceFI.Do("PloyWillRun", ployFI.Interface(), ctx, req, resp)
+		}
 		ctx = ployFI.Do("Run", ctx, req, resp)
-		ctx = this.traceFI.Do("PloyDidRun", ployFI.Interface(), ctx, req, resp)
+		if this.realizeTrace {
+			ctx = this.traceFI.Do("PloyDidRun", ployFI.Interface(), ctx, req, resp)
+		}
 		if ctx != nil && ctx.Err() != nil {
 			return ctx
 		}
@@ -96,4 +101,5 @@ func (this *BaseFlow) AddPloy(imp interface{}) {
 func (this *BaseFlow) AddTrace(imp interface{}) {
 	err := this.traceFI.Realize(imp)
 	ketty.Assert(err)
+	this.realizeTrace = true
 }
