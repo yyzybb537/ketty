@@ -210,19 +210,22 @@ func (this *HttpClient) writeMessage(httpRequest *http.Request, req proto.Messag
 	_, isKettyHttpExtend := req.(KettyHttpExtend)
 	if !isKettyHttpExtend {
 		// Not extend, use default or pb setttings.
+		sTr := this.prt.DefaultTransport
+		if dtr, ok := req.(DefineTransport); ok {
+			sTr = dtr.KettyTransport()
+		}
 		sMr := this.prt.DefaultMarshaler
 		if dmr, ok := req.(DefineMarshaler); ok {
 			sMr = dmr.KettyMarshal()
 		}
+		if sTr == "query" {
+			sMr = "querystring"
+		}
+
 		mr, _ := P.MgrMarshaler.Get(sMr).(P.Marshaler)
 		buf, err := mr.Marshal(req)
 		if err != nil {
 			return err
-		}
-
-		sTr := this.prt.DefaultTransport
-		if dtr, ok := req.(DefineTransport); ok {
-			sTr = dtr.KettyTransport()
 		}
 		tr, _ := MgrTransport.Get(sTr).(DataTransport)
 		err = tr.Write(httpRequest, buf)

@@ -91,16 +91,20 @@ func (this *HttpServer) parseMessage(httpRequest *http.Request, requestType refl
 		if dtr, ok := req.(DefineTransport); ok {
 			sTr = dtr.KettyTransport()
 		}
+		sMr := this.prt.DefaultMarshaler
+		if dmr, ok := req.(DefineMarshaler); ok {
+			sMr = dmr.KettyMarshal()
+		}
+		if sTr == "query" {
+			sMr = "querystring"
+		}
+
 		tr, _ := MgrTransport.Get(sTr).(DataTransport)
 		buf, err := tr.Read(httpRequest)
 		if err != nil {
 			return nil, err
         }
 
-		sMr := this.prt.DefaultMarshaler
-		if dmr, ok := req.(DefineMarshaler); ok {
-			sMr = dmr.KettyMarshal()
-		}
 		mr, _ := P.MgrMarshaler.Get(sMr).(P.Marshaler)
 		err = mr.Unmarshal(buf, req.(proto.Message))
 		if err != nil {
