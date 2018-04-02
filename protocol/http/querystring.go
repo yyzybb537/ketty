@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"strings"
 	"fmt"
+	stdurl "net/url"
 	P "github.com/yyzybb537/ketty/protocol"
 	COM "github.com/yyzybb537/ketty/common"
 )
@@ -35,7 +36,7 @@ func (this *QueryStringMarshaler) Marshal(msg proto.Message) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.WriteString(fmt.Sprintf("%s=%s", this.getKey(typ.Field(i)), svalue))
+		b.WriteString(fmt.Sprintf("%s=%s", stdurl.QueryEscape(this.getKey(typ.Field(i))), stdurl.QueryEscape(svalue)))
 
 		if i + 1 < numField {
 			b.WriteRune('&')
@@ -46,17 +47,11 @@ func (this *QueryStringMarshaler) Marshal(msg proto.Message) ([]byte, error) {
 }
 
 func (this *QueryStringMarshaler) Unmarshal(buf []byte, msg proto.Message) error {
-	kvs := bytes.Split(buf, []byte("&"))
-	kvMap := map[string]string{}
-	for _, kv := range kvs {
-		kvPair := bytes.SplitN(kv, []byte("="), 2)
-		if len(kvPair) != 2 {
-			return errors.Errorf("Error querystring pair(%s) in '%s'", string(kv), string(buf))
-		}
-
-		kvMap[string(kvPair[0])] = string(kvPair[1])
+	kvMap, err := stdurl.ParseQuery(string(buf))
+	if err != nil {
+		return errors.WithStack(err)
 	}
-	
+
 	typ := reflect.TypeOf(msg).Elem()
 	val := reflect.ValueOf(msg).Elem()
 	numField := typ.NumField()
@@ -70,12 +65,16 @@ func (this *QueryStringMarshaler) Unmarshal(buf []byte, msg proto.Message) error
 			}
 		}
 
-		s, exists := kvMap[this.getKey(typ.Field(i))]
+		ss, exists := kvMap[this.getKey(typ.Field(i))]
 		if !exists {
 			continue
 		}
 
-		err := COM.String2V(s, fvalue)
+		if len(ss) == 0 {
+			continue
+		}
+
+		err = COM.String2V(ss[0], fvalue)
 		if err != nil {
 			return errors.WithStack(err)
         }
