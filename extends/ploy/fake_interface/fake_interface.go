@@ -51,7 +51,7 @@ func (this *FakeInterface) Realize(realizedPoint interface{}) error{
 	if this.realizedI != nil {
 		//已经实现就覆盖，如果覆盖出错也会清除已有的interface
 		newFI := NewFakeInterface()
-		this = newFI
+		*this = *newFI
 	}
 	for _, m := range this.m {
 		handle, argsTypes, err := parse(realizedPoint, m.Name, m.ArgsCount)
