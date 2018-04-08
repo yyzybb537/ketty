@@ -28,7 +28,7 @@ func TestLog(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
-func Benchmark_Log(b *testing.B) {
+func Benchmark_FileLog(b *testing.B) {
 	b.StopTimer()
 	opt := log.DefaultLogOption()
 	opt.OutputFile = "logdir/ketty"
@@ -48,6 +48,7 @@ func Benchmark_Log(b *testing.B) {
 func Benchmark_LogNull(b *testing.B) {
 	b.StopTimer()
 	opt := log.DefaultLogOption()
+	opt.HeaderFormat = "$datetime"
 	opt.OutputFile = "/dev/null"
 	flg, err := log.NewFileLog(opt)
 	if err != nil {
@@ -59,7 +60,32 @@ func Benchmark_LogNull(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		ketty.GetLog().Debugf("file log")
 	}
-//	log.FlushAll()
+}
+
+func Benchmark_LogTime(b *testing.B) {
+	b.StopTimer()
+	w := new(fakeWriter)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		w.Write([]byte(time.Now().Format("2006-01-02 15:04:05")))
+	}
+}
+
+func Benchmark_LogEmpty(b *testing.B) {
+	b.StopTimer()
+	opt := log.DefaultLogOption()
+	opt.HeaderFormat = ""
+	opt.OutputFile = "/dev/null"
+	flg, err := log.NewFileLog(opt)
+	if err != nil {
+		println(err.Error())
+		return
+	}
+	log.SetLog(flg)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		ketty.GetLog().Debugf("file log")
+	}
 }
 
 type fakeWriter struct {}
@@ -67,10 +93,12 @@ func (this *fakeWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func Benchmark_Header(b *testing.B) {
+func Benchmark_LogHeader(b *testing.B) {
 	b.StopTimer()
 	opt := log.DefaultLogOption()
+	opt.HeaderFormat = "$datetime"
 	w := new(fakeWriter)
+	opt.WriteHeader(log.Level(1), 0, w)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		opt.WriteHeader(log.Level(1), 0, w)
