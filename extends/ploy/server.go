@@ -1,9 +1,8 @@
 package ploy
 
 import (
-	//"github.com/yyzybb537/ketty/extends/log"
-	//"github.com/yyzybb537/ketty/config"
 	"github.com/yyzybb537/ketty"
+	"github.com/yyzybb537/ketty/log"
 	"fmt"
 )
 
@@ -11,6 +10,7 @@ type Server struct {
 	sUrl		string
 	sDriverUrl	string
 	servers		[]ketty.Server
+	logKeys     []interface{}
 }
 
 func NewServer(sUrl, sDriverUrl string) (server *Server, err error) {
@@ -22,6 +22,10 @@ func NewServer(sUrl, sDriverUrl string) (server *Server, err error) {
 
 type getHandle interface{
 	GetHandle() ketty.ServiceHandle
+}
+
+type getGlsLogKey interface{
+	GlsLogKey() interface{}
 }
 
 func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, err error){
@@ -48,6 +52,7 @@ func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, e
 		i.Init()
 	}
 	this.servers = append(this.servers, server)
+	this.appendLogKeys(implement)
 	return
 }
 
@@ -71,11 +76,25 @@ func (this *Server) NewOverLappedFlow(router string, implement interface{}, flow
 	}
 
 	this.servers = append(this.servers, server)
+	this.appendLogKeys(implement)
 	return
 }
 
+func (this *Server) appendLogKeys(implement interface{}) {
+	var logKey interface{}
+	if logHandle, ok := implement.(getGlsLogKey); ok {
+		logKey = logHandle.GlsLogKey()
+	}
+	this.logKeys = append(this.logKeys, logKey)
+}
+
 func (this *Server) Serve() (err error){
-	for _, s := range this.servers {
+	for i, s := range this.servers {
+		logKey := this.logKeys[i]
+		if logKey != nil {
+			log.SetGlsDefaultKey(logKey)
+			defer log.CleanupGlsDefaultKey()
+		}
 		err = s.Serve()
 		if err != nil {
 			return
