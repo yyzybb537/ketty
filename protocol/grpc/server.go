@@ -100,7 +100,7 @@ func (this *GrpcServer) unaryServerInterceptorWithContext(inCtx context.Context,
 	
 	if this.logKey != nil {
 		log.SetGlsDefaultKey(this.logKey)
-		defer log.CleanupGlsDefaultKey()
+		defer log.CleanupGlsDefaultKey(this.logKey)
 	}
 
 	var err error

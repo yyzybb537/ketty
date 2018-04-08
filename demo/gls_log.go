@@ -20,7 +20,7 @@ type logKey struct{}
 
 func main() {
 	log.SetGlsDefaultKey(logKey{})
-	defer log.CleanupGlsDefaultKey()
+	defer log.CleanupGlsDefaultKey(logKey{})
 
 	opt := log.DefaultLogOption()
 	opt.LogCategory = "file"

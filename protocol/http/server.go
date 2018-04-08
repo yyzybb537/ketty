@@ -277,7 +277,7 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 		this.handler[fullMethodName] = func(w http.ResponseWriter, httpRequest *http.Request){
 			if this.logKey != nil {
 				log.SetGlsDefaultKey(this.logKey)
-				defer log.CleanupGlsDefaultKey()
+				defer log.CleanupGlsDefaultKey(this.logKey)
 			}
 
 			var err error

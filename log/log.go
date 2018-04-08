@@ -126,8 +126,11 @@ func SetGlsDefaultKey(key interface{}) {
 	gls.Set(priGlsKey{}, key)
 }
 
-func CleanupGlsDefaultKey() {
-	gls.Del(priGlsKey{})
+func CleanupGlsDefaultKey(key interface{}) {
+	glsKey := GetGlsDefaultKey()
+	if glsKey == key {
+		gls.Del(priGlsKey{})
+	}
 }
 
 func GetGlsDefaultKey() interface{} {

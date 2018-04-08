@@ -93,7 +93,7 @@ func (this *Server) Serve() (err error){
 		logKey := this.logKeys[i]
 		if logKey != nil {
 			log.SetGlsDefaultKey(logKey)
-			defer log.CleanupGlsDefaultKey()
+			defer log.CleanupGlsDefaultKey(logKey)
 		}
 		err = s.Serve()
 		if err != nil {
