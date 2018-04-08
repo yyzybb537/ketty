@@ -15,6 +15,9 @@ func (this *StdLog) Clone(opt *LogOption) (LogI, error) {
 }
 
 func (this *StdLog) write(level Level, info string) {
+	if this.opt == nil {
+		this.opt = DefaultLogOption()
+	}
 	buf := bytes.NewBufferString("")
 	this.opt.WriteHeader(level, 3, buf)
 	buf.WriteString(info)

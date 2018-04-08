@@ -2,9 +2,14 @@ package real_log
 
 import (
 	"github.com/yyzybb537/glog"
+	"github.com/yyzybb537/ketty/log"
 )
 
 type RealLog struct{}
+
+func (this *RealLog) Clone(opt *log.LogOption) (log.LogI, error) {
+	return new(RealLog), nil
+}
 
 func (this *RealLog) Debugf(format string, args ...interface{}) {
 	//默认不打印
