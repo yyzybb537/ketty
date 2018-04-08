@@ -63,7 +63,7 @@ func DefaultLogOption() *LogOption {
 			HeaderFormat : "$L $datetime-ms $gid $file:$line] ",
 			RotateCategory : "size",
 			RotateValue : 1912602624, // 1.8 GB
-			RotateSuffixFormat : ".P$pid.$day-$hour-$second",
+			RotateSuffixFormat : ".P$pid.$hour-$minute-$second",
 		}
 	}
 
