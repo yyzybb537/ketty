@@ -5,6 +5,7 @@ import (
 	"github.com/yyzybb537/ketty"
 	"github.com/yyzybb537/ketty/log"
 	"time"
+	"strings"
 )
 
 var _ = log.BindOption
@@ -48,7 +49,7 @@ func Benchmark_FileLog(b *testing.B) {
 func Benchmark_LogNull(b *testing.B) {
 	b.StopTimer()
 	opt := log.DefaultLogOption()
-	opt.HeaderFormat = "$datetime"
+//	opt.HeaderFormat = "$datetime"
 	opt.OutputFile = "/dev/null"
 	flg, err := log.NewFileLog(opt)
 	if err != nil {
@@ -71,7 +72,7 @@ func Benchmark_LogTime(b *testing.B) {
 	}
 }
 
-func Benchmark_LogEmpty(b *testing.B) {
+func Benchmark_LogWithoutHeader(b *testing.B) {
 	b.StopTimer()
 	opt := log.DefaultLogOption()
 	opt.HeaderFormat = ""
@@ -93,10 +94,12 @@ func (this *fakeWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+var _ = strings.Compare
 func Benchmark_LogHeader(b *testing.B) {
 	b.StopTimer()
 	opt := log.DefaultLogOption()
-	opt.HeaderFormat = "$datetime"
+//	opt.HeaderFormat = strings.Repeat("$datetime", 1)
+//	opt.HeaderFormat = strings.Repeat("$gid", 1)
 	w := new(fakeWriter)
 	opt.WriteHeader(log.Level(1), 0, w)
 	b.StartTimer()

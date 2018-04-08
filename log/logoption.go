@@ -7,11 +7,15 @@ import (
 	"time"
 	"strings"
 	"bytes"
-//	"strconv"
+	"strconv"
 	"runtime"
 	"github.com/yyzybb537/gls"
 	"unsafe"
+	"context"
 )
+
+var _ unsafe.Pointer
+var _ = strconv.IntSize
 
 type LogOption struct {
 	// toggle of logger
@@ -57,7 +61,7 @@ func DefaultLogOption() *LogOption {
 		defaultOpt = &LogOption{
 			Active : true,
 			OutputFile : "ketty",
-			HeaderFormat : "$L $date $time$ms $gid $file:$line] ",
+			HeaderFormat : "$L $datetime-ms $gid $file:$line] ",
 			RotateCategory : "size",
 			RotateValue : 1912602624, // 1.8 GB
 			RotateSuffixFormat : ".P$pid.$day-$hour-$second.log",
@@ -148,102 +152,219 @@ func (this *formater) merge() {
 }
 
 func (this *formater) WriteHeader(level Level, depth int, buf io.Writer) int {
+	var n int
 	nBytes := 0
+	ctx := context.Background()
 	for _, cl := range this.callers {
 		if str, ok := cl.(string); ok {
-//			n, _ := fmt.Fprint(buf, str)
-//			n, _ := buf.Write([]byte(str))
-			n, _ := buf.Write(*(*[]byte)(unsafe.Pointer(&str)))
+			_ = str
+//			n, _ = buf.Write([]byte(str))
+			n, _ = buf.Write(fastString2Bytes(str))
 			nBytes += n
-		} else if f, ok := cl.(func(level Level, depth int, buf io.Writer) int); ok {
-//			n, _ := fmt.Fprint(buf, f(level, depth))
-//			n, _ := buf.Write([]byte(f(level, depth)))
-			n := f(level, depth, buf)
-//			n, _ := buf.Write(*(*[]byte)(unsafe.Pointer(&str)))
+		} else if f, ok := cl.(func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context)); ok {
+			_ = f
+			n, ctx = f(ctx, level, depth, buf)
+//			n, _ = buf.Write(fastString2Bytes(str))
 			nBytes += n
 		}
 	}
 	return nBytes
 }
 
-func headerLeader2func(leader string) func(level Level, depth int, buf io.Writer) int {
+type lineKey struct{}
+type fileKey struct{}
+type timeKey struct{}
+
+func headerLeader2func(leader string) func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
 	switch leader {
 	case "level":
-		return func(level Level, depth int, buf io.Writer) int {
-			n, _ := fmt.Fprint(buf, level.ToString())
-			return n
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+			n, _ := buf.Write(fastString2Bytes(level.ToString()))
+			return n, ctx
 		}
 
 	case "L":
-		return func(level Level, depth int, buf io.Writer) int {
-			n, _ := fmt.Fprint(buf, level.Header())
-			return n
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+			n, _ := buf.Write([]byte(level.Header()))
+			return n, ctx
 		}
 
 	case "datetime-ms":
-		return func(level Level, depth int, buf io.Writer) int {
-			n, _ := fmt.Fprint(buf, time.Now().Format("2006-01-02 15:04:05.999999"))
-			return n
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+			var tmp [27]byte
+			t := time.Now()
+			year, month, day := t.Date()
+			hour, minute, second := t.Clock()
+			usec := t.Nanosecond() / 1000
+			tmp[0] = byte(year / 1000) + byte('0')
+			tmp[1] = byte((year % 1000) / 100) + byte('0')
+			tmp[2] = byte((year % 100) / 10) + byte('0')
+			tmp[3] = byte(year % 10) + byte('0')
+			tmp[4] = '-'
+			tmp[5] = byte(month / 10) + byte('0')
+			tmp[6] = byte(month % 10) + byte('0')
+			tmp[7] = '-'
+			tmp[8] = byte(day / 10) + byte('0')
+			tmp[9] = byte(day % 10) + byte('0')
+			tmp[10] = ' '
+			tmp[11] = byte(hour / 10) + byte('0')
+			tmp[12] = byte(hour % 10) + byte('0')
+			tmp[13] = ':'
+			tmp[14] = byte(minute / 10) + byte('0')
+			tmp[15] = byte(minute % 10) + byte('0')
+			tmp[16] = ':'
+			tmp[17] = byte(second / 10) + byte('0')
+			tmp[18] = byte(second % 10) + byte('0')
+			tmp[19] = '.'
+			tmp[20] = byte(usec / 100000) + byte('0')
+			tmp[21] = byte((usec % 100000) / 10000) + byte('0')
+			tmp[23] = byte((usec % 10000) / 1000) + byte('0')
+			tmp[24] = byte((usec % 1000) / 100) + byte('0')
+			tmp[25] = byte((usec % 100) / 10) + byte('0')
+			tmp[26] = byte(usec % 10) + byte('0')
+			n := 27
+			buf.Write(tmp[:n])
+			return n, ctx
 		}
 
 	case "datetime":
-		return func(level Level, depth int, buf io.Writer) int {
-			n, _ := fmt.Fprint(buf, time.Now().Format("2006-01-02 15:04:05"))
-			return n
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+//			n, _ := buf.Write(fastString2Bytes(time.Now().Format("2006-01-02 15:04:05")))
+			var tmp [19]byte
+			t := time.Now()
+			year, month, day := t.Date()
+			hour, minute, second := t.Clock()
+			tmp[0] = byte(year / 1000) + byte('0')
+			tmp[1] = byte((year % 1000) / 100) + byte('0')
+			tmp[2] = byte((year % 100) / 10) + byte('0')
+			tmp[3] = byte(year % 10) + byte('0')
+			tmp[4] = '-'
+			tmp[5] = byte(month / 10) + byte('0')
+			tmp[6] = byte(month % 10) + byte('0')
+			tmp[7] = '-'
+			tmp[8] = byte(day / 10) + byte('0')
+			tmp[9] = byte(day % 10) + byte('0')
+			tmp[10] = ' '
+			tmp[11] = byte(hour / 10) + byte('0')
+			tmp[12] = byte(hour % 10) + byte('0')
+			tmp[13] = ':'
+			tmp[14] = byte(minute / 10) + byte('0')
+			tmp[15] = byte(minute % 10) + byte('0')
+			tmp[16] = ':'
+			tmp[17] = byte(second / 10) + byte('0')
+			tmp[18] = byte(second % 10) + byte('0')
+			n := 19
+			buf.Write(tmp[:n])
+			return n, ctx
 		}
 
 	case "date":
-		return func(level Level, depth int, buf io.Writer) int {
-			n, _ := fmt.Fprint(buf, time.Now().Format("2006-01-02"))
-			return n
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+			var tmp [10]byte
+			t := time.Now()
+			year, month, day := t.Date()
+			tmp[0] = byte(year / 1000) + byte('0')
+			tmp[1] = byte((year % 1000) / 100) + byte('0')
+			tmp[2] = byte((year % 100) / 10) + byte('0')
+			tmp[3] = byte(year % 10) + byte('0')
+			tmp[4] = '-'
+			tmp[5] = byte(month / 10) + byte('0')
+			tmp[6] = byte(month % 10) + byte('0')
+			tmp[7] = '-'
+			tmp[8] = byte(day / 10) + byte('0')
+			tmp[9] = byte(day % 10) + byte('0')
+			n := 10
+			buf.Write(tmp[:n])
+			return n, ctx
 		}
 
 	case "time":
-		return func(level Level, depth int, buf io.Writer) int {
-			n, _ := fmt.Fprint(buf, time.Now().Format("15:04:05"))
-			return n
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+			var tmp [8]byte
+			t := time.Now()
+			hour, minute, second := t.Clock()
+			tmp[0] = byte(hour / 10) + byte('0')
+			tmp[1] = byte(hour % 10) + byte('0')
+			tmp[2] = ':'
+			tmp[3] = byte(minute / 10) + byte('0')
+			tmp[4] = byte(minute % 10) + byte('0')
+			tmp[5] = ':'
+			tmp[6] = byte(second / 10) + byte('0')
+			tmp[7] = byte(second % 10) + byte('0')
+			n := 8
+			buf.Write(tmp[:n])
+			return n, ctx
 		}
 
 	case "ms":
-		return func(level Level, depth int, buf io.Writer) int {
-			n, _ := fmt.Fprint(buf, time.Now().Format(".999999"))
-			return n
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+			var tmp [7]byte
+			t := time.Now()
+			usec := t.Nanosecond() / 1000
+			tmp[0] = byte(usec / 100000) + byte('0')
+			tmp[1] = byte((usec % 100000) / 10000) + byte('0')
+			tmp[3] = byte((usec % 10000) / 1000) + byte('0')
+			tmp[4] = byte((usec % 1000) / 100) + byte('0')
+			tmp[5] = byte((usec % 100) / 10) + byte('0')
+			tmp[6] = byte(usec % 10) + byte('0')
+			n := 7
+			buf.Write(tmp[:n])
+			return n, ctx
 		}
 
 	case "gid":
-		return func(level Level, depth int, buf io.Writer) int {
-			n, _ := fmt.Fprintf(buf, "%d", gls.Goid())
-			return n
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+			n, _ := buf.Write(fastString2Bytes(strconv.Itoa(int(gls.Goid()))))
+			return n, ctx
 		}
 
 	case "file":
-		return func(level Level, depth int, buf io.Writer) int {
-			_, file, _, ok := runtime.Caller(3 + depth)
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+			file, ok := ctx.Value(fileKey{}).(string)
 			if !ok {
-				file = "???"
-			} else {
-				slash := strings.LastIndex(file, "/")
-				if slash >= 0 {
-					file = file[slash+1:]
-				}
+				var line int
+				file, line = getFileLine(3 + depth)
+				ctx = context.WithValue(ctx, fileKey{}, file)
+				ctx = context.WithValue(ctx, lineKey{}, line)
 			}
-			n, _ := fmt.Fprint(buf, file)
-			return n
+			n, _ := buf.Write(fastString2Bytes(file))
+			return n, ctx
 		}
 
 	case "line":
-		return func(level Level, depth int, buf io.Writer) int {
-			_, _, line, ok := runtime.Caller(3 + depth)
+		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
+			line, ok := ctx.Value(lineKey{}).(int)
 			if !ok {
-				line = 1
+				var file string
+				file, line = getFileLine(3 + depth)
+				ctx = context.WithValue(ctx, fileKey{}, file)
+				ctx = context.WithValue(ctx, lineKey{}, line)
 			}
-			n, _ := fmt.Fprintf(buf, "%d", line)
-			return n
+			n, _ := buf.Write(fastString2Bytes(strconv.Itoa(line)))
+			return n, ctx
 		}
 
 	default:
 		return nil
 	}
+}
+
+func getFileLine(depth int) (string, int) {
+	_, file, line, ok := runtime.Caller(1 + depth)
+	if !ok {
+		file = "???"
+		line = 1
+	} else {
+		slash := strings.LastIndex(file, "/")
+		if slash >= 0 {
+			file = file[slash+1:]
+		}
+	}
+	return file, line
+}
+
+func fastString2Bytes(str string) []byte {
+	return *(*[]byte)(unsafe.Pointer(&str))
 }
 
 func suffixLeader2func(leader string) func() string {

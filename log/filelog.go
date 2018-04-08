@@ -62,6 +62,7 @@ func (this *FileLog) write(level Level, info string) {
 
 func (this *FileLog) reopen() error {
 	var err error
+	_ = err
 	if this.w != nil {
 		this.w.Flush()
 	}
