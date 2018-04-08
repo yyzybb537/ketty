@@ -18,6 +18,9 @@ var _ unsafe.Pointer
 var _ = strconv.IntSize
 
 type LogOption struct {
+	// log struct type
+	LogCategory string
+
 	// toggle of logger
 	Ignore bool
 
@@ -59,6 +62,7 @@ var defaultOpt *LogOption
 func DefaultLogOption() *LogOption {
 	if defaultOpt == nil {
 		defaultOpt = &LogOption{
+			LogCategory : "std",
 			OutputFile : "log/ketty",
 			HeaderFormat : "$L $datetime-ms $gid $file:$line] ",
 			RotateCategory : "size",

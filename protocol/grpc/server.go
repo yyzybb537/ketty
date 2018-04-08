@@ -23,6 +23,7 @@ type GrpcServer struct {
 	driverUrl U.Url
 	Impl      *grpc.Server
 	opt		  *GrpcOption
+	logKey    interface{}
 }
 
 func newGrpcServer(url, driverUrl U.Url) *GrpcServer {
@@ -45,6 +46,8 @@ func (this *GrpcServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 }
 
 func (this *GrpcServer) Serve() error {
+	this.logKey = log.GetGlsDefaultKey()
+
 	addrs := this.url.GetAddrs()
 	for _, addr := range addrs {
 		lis, err := net.Listen("tcp", addr)
@@ -94,6 +97,12 @@ func (this *GrpcServer) unaryServerInterceptor(ctx context.Context, req interfac
 
 func (this *GrpcServer) unaryServerInterceptorWithContext(inCtx context.Context, req interface{},
 	info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (rsp interface{}, ctx context.Context) {
+	
+	if this.logKey != nil {
+		log.SetGlsDefaultKey(this.logKey)
+		defer log.CleanupGlsDefaultKey()
+	}
+
 	var err error
 	ctx = inCtx
 	aopList := this.GetAop()

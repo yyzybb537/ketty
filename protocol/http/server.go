@@ -8,6 +8,7 @@ import (
 	A "github.com/yyzybb537/ketty/aop"
 	O "github.com/yyzybb537/ketty/option"
 	P "github.com/yyzybb537/ketty/protocol"
+	"github.com/yyzybb537/ketty/log"
 	"net/http"
 	"reflect"
 	"fmt"
@@ -28,6 +29,7 @@ type HttpServer struct {
 	prt         *Proto
 	opt        *HttpOption
 	handler     map[string]func(http.ResponseWriter, *http.Request)
+	logKey      interface{}
 }
 
 func newHttpServer(url, driverUrl U.Url) (*HttpServer, error) {
@@ -273,6 +275,11 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 		requestType := reflectMethod.Type().In(1).Elem()
 		fullMethodName := fmt.Sprintf("/%s/%s", strings.Replace(handle.ServiceName(), ".", "/", -1), method.MethodName)
 		this.handler[fullMethodName] = func(w http.ResponseWriter, httpRequest *http.Request){
+			if this.logKey != nil {
+				log.SetGlsDefaultKey(this.logKey)
+				defer log.CleanupGlsDefaultKey()
+			}
+
 			var err error
 			defer func() {
 				if err != nil {
@@ -306,6 +313,8 @@ func (this *HttpServer) RegisterMethod(handle COM.ServiceHandle, implement inter
 }
 
 func (this *HttpServer) Serve() error {
+	this.logKey = log.GetGlsDefaultKey()
+
 	for _, r := range this.router {
 		err := r.RServe(this.url.GetMainProtocol())
 		if err != nil {

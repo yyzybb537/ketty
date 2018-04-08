@@ -3,6 +3,8 @@ package log
 import (
 	"sync"
 	"github.com/yyzybb537/gls"
+	COM "github.com/yyzybb537/ketty/common"
+	"github.com/pkg/errors"
 )
 
 // ---------------------------------------------------
@@ -26,12 +28,42 @@ type LogI interface {
 	Flush() error
 }
 
+var LogMgr *COM.Manager = COM.NewManager((*LogI)(nil))
+
 var logger LogI
 var logBindings = make(map[interface{}]LogI)
 var logBindingsMtx sync.RWMutex
 
 func init() {
-	logger, _ = new(StdLog).Clone(DefaultLogOption())
+	LogMgr.Register("std", new(StdLog))
+	LogMgr.Register("file", new(FileLog))
+
+	if logger == nil {
+		var err error
+		opt := DefaultLogOption()
+		logger, err = MakeLogger(opt)
+		if err != nil {
+			opt.LogCategory = "std"
+			logger, err = MakeLogger(opt)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func MakeLogger(opt *LogOption) (LogI, error) {
+	lg, ok := LogMgr.Get(opt.LogCategory).(LogI)
+	if !ok {
+		return nil, errors.Errorf("Unkown log category in option. LogCategory=%s", opt.LogCategory)
+	}
+
+	newLg, err := lg.Clone(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	return newLg, nil
 }
 
 func SetLog(l LogI) {
@@ -47,7 +79,7 @@ func SetLog(l LogI) {
 func BindOption(key interface{}, opt *LogOption) (LogI, error) {
 	logBindingsMtx.Lock()
 	defer logBindingsMtx.Unlock()
-	lg, err := logger.Clone(opt)
+	lg, err := MakeLogger(opt)
 	if err != nil {
 		return nil, err
 	}
