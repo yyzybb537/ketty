@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/peer"
 	md "google.golang.org/grpc/metadata"
 	"net"
+	"github.com/yyzybb537/gls"
 )
 
 type GrpcServer struct {
@@ -51,12 +52,12 @@ func (this *GrpcServer) Serve() error {
 			return err
 		}
 
-		go func() {
+		gls.Go(func() {
 			err := this.Impl.Serve(lis)
 			if err != nil {
 				log.GetLog().Errorf("Serve lis error:%s. addr:%s", err.Error(), addr)
 			}
-		}()
+		})
 	}
 
 	if !this.driverUrl.IsEmpty() {

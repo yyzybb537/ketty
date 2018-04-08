@@ -33,7 +33,7 @@ type LogOption struct {
 	// rotate parameter: bytes of one file / seconds
 	RotateValue int64
 
-	// rotate suffix format of filename: .$pid.$day-$hour-$second.log
+	// rotate suffix format of filename: .$pid.$day-$hour-$minute-$second.log
 	RotateSuffixFormat string
 
 	// extends fields
@@ -63,7 +63,7 @@ func DefaultLogOption() *LogOption {
 			HeaderFormat : "$L $datetime-ms $gid $file:$line] ",
 			RotateCategory : "size",
 			RotateValue : 1912602624, // 1.8 GB
-			RotateSuffixFormat : ".P$pid.$hour-$minute-$second",
+			RotateSuffixFormat : ".P$pid.$datetime",
 		}
 	}
 
@@ -190,7 +190,7 @@ func headerLeader2func(leader string) func(ctx context.Context, level Level, dep
 
 	case "datetime-ms":
 		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
-			var tmp [27]byte
+			var tmp [26]byte
 			t := time.Now()
 			year, month, day := t.Date()
 			hour, minute, second := t.Clock()
@@ -217,11 +217,11 @@ func headerLeader2func(leader string) func(ctx context.Context, level Level, dep
 			tmp[19] = '.'
 			tmp[20] = byte(usec / 100000) + byte('0')
 			tmp[21] = byte((usec % 100000) / 10000) + byte('0')
-			tmp[23] = byte((usec % 10000) / 1000) + byte('0')
-			tmp[24] = byte((usec % 1000) / 100) + byte('0')
-			tmp[25] = byte((usec % 100) / 10) + byte('0')
-			tmp[26] = byte(usec % 10) + byte('0')
-			n := 27
+			tmp[22] = byte((usec % 10000) / 1000) + byte('0')
+			tmp[23] = byte((usec % 1000) / 100) + byte('0')
+			tmp[24] = byte((usec % 100) / 10) + byte('0')
+			tmp[25] = byte(usec % 10) + byte('0')
+			n := 26
 			buf.Write(tmp[:n])
 			return n, ctx
 		}
@@ -297,16 +297,16 @@ func headerLeader2func(leader string) func(ctx context.Context, level Level, dep
 
 	case "ms":
 		return func(ctx context.Context, level Level, depth int, buf io.Writer) (int, context.Context) {
-			var tmp [7]byte
+			var tmp [6]byte
 			t := time.Now()
 			usec := t.Nanosecond() / 1000
 			tmp[0] = byte(usec / 100000) + byte('0')
 			tmp[1] = byte((usec % 100000) / 10000) + byte('0')
-			tmp[3] = byte((usec % 10000) / 1000) + byte('0')
-			tmp[4] = byte((usec % 1000) / 100) + byte('0')
-			tmp[5] = byte((usec % 100) / 10) + byte('0')
-			tmp[6] = byte(usec % 10) + byte('0')
-			n := 7
+			tmp[2] = byte((usec % 10000) / 1000) + byte('0')
+			tmp[3] = byte((usec % 1000) / 100) + byte('0')
+			tmp[4] = byte((usec % 100) / 10) + byte('0')
+			tmp[5] = byte(usec % 10) + byte('0')
+			n := 6
 			buf.Write(tmp[:n])
 			return n, ctx
 		}

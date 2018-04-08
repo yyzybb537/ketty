@@ -13,6 +13,7 @@ import (
 	D "github.com/yyzybb537/ketty/driver"
 	A "github.com/yyzybb537/ketty/aop"
 	COM "github.com/yyzybb537/ketty/common"
+	"github.com/yyzybb537/gls"
 )
 
 // Implement Client interface, and manage multiply clients.
@@ -96,7 +97,7 @@ func (this *Clients) dialDriver(driver D.Driver) error {
 	}
 	this.onClose = append(this.onClose, stop)
 
-	go func() {
+	gls.Go(func() {
 		for {
 			up := []U.Url{}
 			down := []U.Url{}
@@ -157,17 +158,17 @@ func (this *Clients) dialDriver(driver D.Driver) error {
                 }
 				
 				// 连接失败, 转入后台重试
-				go func() {
+				gls.Go(func() {
 					err := client.retryDial()
 					if err != nil {
 						down := this.balancer.Up(url)
 						client.onClose = append(client.onClose, down)
 						this.blockingWait.Notify()
 					}
-				}()
+				})
 			}
         }
-	}()
+	})
 
 	return nil
 }

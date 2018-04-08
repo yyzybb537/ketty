@@ -9,15 +9,23 @@ import (
 type TraceAop struct {
 }
 
+type createdTraceIdKey struct {}
+
 // client
 func (this *TraceAop) BeforeClientInvoke(ctx context.Context, req interface{}) context.Context {
-	genTraceID()
+	traceId, created := genTraceID()
+	if created {
+		ctx = context.WithValue(ctx, createdTraceIdKey{}, traceId)
+	}
 	return ctx
 }
 
 // server
 func (this *TraceAop) BeforeServerInvoke(ctx context.Context, req interface{}) context.Context {
-	genTraceID()
+	traceId, created := genTraceID()
+	if created {
+		ctx = context.WithValue(ctx, createdTraceIdKey{}, traceId)
+	}
 	return ctx
 }
 
@@ -30,7 +38,11 @@ func (this *TraceAop) ServerCleanup(ctx context.Context) {
 }
 
 func (this *TraceAop) ClientSendMetaData(ctx context.Context, metadata map[string]string) context.Context {
-	metadata["traceid"] = genTraceID()
+	traceId, created := genTraceID()
+	if created {
+		ctx = context.WithValue(ctx, createdTraceIdKey{}, traceId)
+	}
+	metadata["traceid"] = traceId
 	return ctx
 }
 
@@ -38,20 +50,22 @@ func (this *TraceAop) ServerRecvMetaData(ctx context.Context, metadata map[strin
 	traceId, exists := metadata["traceid"]
 	if exists {
 		gls.Set(traceIdKey{}, traceId)
+		ctx = context.WithValue(ctx, createdTraceIdKey{}, traceId)
 	}
 	return ctx
 }
 
 type traceIdKey struct {}
 
-func genTraceID() string {
+func genTraceID() (string, bool) {
 	traceId, ok := gls.Get(traceIdKey{}).(string)
 	if !ok || traceId == "" {
 		uuid, _ := uuid.NewV4()
 		traceId = uuid.String()
 		gls.Set(traceIdKey{}, traceId)
+		return traceId, true
 	}
-	return traceId
+	return traceId, false
 }
 
 func GetTraceID() string {
@@ -63,6 +77,12 @@ func GetTraceID() string {
 }
 
 func cleanupTraceID(ctx context.Context) {
-	gls.Del(traceIdKey{})
+	ctxTraceId, exists := ctx.Value(createdTraceIdKey{}).(string)
+	if exists {
+		traceId, exists := gls.Get(traceIdKey{}).(string)
+		if exists && ctxTraceId == traceId {
+			gls.Del(traceIdKey{})
+		}
+	}
 }
 

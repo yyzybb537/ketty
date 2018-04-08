@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"github.com/yyzybb537/gls"
 )
 
 type Router struct {
@@ -57,25 +58,25 @@ func (this *Router) RServe(proto string) error {
 		this.Server.ReadTimeout = time.Duration(this.opt.Option.TimeoutMilliseconds) * time.Millisecond
 	}
 	if proto == "https" {
-		go func() {
+		gls.Go(func() {
 			this.Addr = U.FormatAddr(this.addr, proto)
 			err := this.ListenAndServeTLS(gCertFile, gKeyFile)
 			if err != nil {
 				log.GetLog().Fatalf("Http.ServeTLS lis error:%s. addr:%s", err.Error(), this.addr)
 			}
-        }()
+        })
     } else if proto == "http" {
 		lis, err := net.Listen("tcp", U.FormatAddr(this.addr, proto))
 		if err != nil {
 			return err
 		}
 
-		go func() {
+		gls.Go(func() {
 			err := this.Serve(lis)
 			if err != nil {
 				log.GetLog().Fatalf("Http.Serve lis error:%s. addr:%s", err.Error(), this.addr)
 			}
-        }()
+        })
     } else {
 		return errors.Errorf("Error protocol:%s", proto)
     }
