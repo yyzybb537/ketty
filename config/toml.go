@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"fmt"
+	"path/filepath"
 )
 
 type TomlConfig struct {}
@@ -29,6 +30,14 @@ func (this *TomlConfig) Write(cfg interface{}, file string) (err error) {
 		return
 	}
 
+	err = os.MkdirAll(filepath.Dir(file), 0775)
+	if os.IsExist(err) {
+		err = nil
+	}
+	if err != nil {
+		return
+	}
+
 	f, err := os.Create(file)
 	if err != nil {
 		return
@@ -41,13 +50,13 @@ func (this *TomlConfig) Write(cfg interface{}, file string) (err error) {
 func (this *TomlConfig) check(cfg interface{}) (err error) {
 	v := reflect.ValueOf(cfg)
 	if v.Kind() != reflect.Ptr {
-		err = fmt.Errorf("ConfigInit parameter must be a pointer")
+		err = fmt.Errorf("ConfigInit parameter must be a pointer. cfg.Name=%s cfg.Kind=%s", v.Type().Name(), v.Kind().String())
 		return 
 	}
 
 	v = v.Elem()
 	if v.Kind() != reflect.Struct {
-		err = fmt.Errorf("ConfigInit parameter must be a pointer to struct")
+		err = fmt.Errorf("ConfigInit parameter must be a pointer to struct. cfg.Name=%s cfg.Kind=%s", v.Type().Name(), v.Kind().String())
 		return 
 	}
 

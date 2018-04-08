@@ -2,6 +2,7 @@ package log
 
 import (
 	"sync"
+	"github.com/yyzybb537/gls"
 )
 
 // ---------------------------------------------------
@@ -54,18 +55,24 @@ func BindOption(key interface{}, opt *LogOption) (LogI, error) {
 	return lg, nil
 }
 
-func GetLog(key ... interface{}) LogI {
-	if len(key) == 0 {
-		return logger
-    }
+func GetLog(keys ... interface{}) LogI {
+	var key interface{}
+	if len(keys) > 0 {
+		key = keys[0]
+    } else {
+		key = GetGlsDefaultKey()
+		if key == nil {
+			return logger
+		}
+	}
 
-	if !CheckSection(key[0]) {
+	if !CheckSection(key) {
 		return gFakeLog
 	}
 
 	logBindingsMtx.RLock()
 	defer logBindingsMtx.RUnlock()
-	if lg, exists := logBindings[key[0]]; exists {
+	if lg, exists := logBindings[key]; exists {
 		return lg
 	}
 	return logger
@@ -78,6 +85,21 @@ func FlushAll() {
 		lg.Flush()
 	}
 	logger.Flush()
+}
+
+type priGlsKey struct{}
+
+// 警告: 调用这个接口的地方, 一定要记得使用结束后调用Cleanup, 否则会内存泄漏
+func SetGlsDefaultKey(key interface{}) {
+	gls.Set(priGlsKey{}, key)
+}
+
+func CleanupGlsDefaultKey() {
+	gls.Del(priGlsKey{})
+}
+
+func GetGlsDefaultKey() interface{} {
+	return gls.Get(priGlsKey{})
 }
 
 // ---------------------------------------------------

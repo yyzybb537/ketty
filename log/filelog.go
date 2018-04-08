@@ -43,6 +43,10 @@ func (this *FileLog) Clone(opt *LogOption) (LogI, error) {
 }
 
 func (this *FileLog) write(level Level, info string) {
+	if this.opt.Ignore {
+		return
+	}
+
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	n := this.opt.WriteHeader(level, 3, this.w)

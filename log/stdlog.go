@@ -18,6 +18,9 @@ func (this *StdLog) write(level Level, info string) {
 	if this.opt == nil {
 		this.opt = DefaultLogOption()
 	}
+	if this.opt.Ignore {
+		return
+	}
 	buf := bytes.NewBufferString("")
 	this.opt.WriteHeader(level, 3, buf)
 	buf.WriteString(info)

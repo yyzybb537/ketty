@@ -19,7 +19,7 @@ var _ = strconv.IntSize
 
 type LogOption struct {
 	// toggle of logger
-	Active bool
+	Ignore bool
 
 	// output file name
 	OutputFile string
@@ -59,12 +59,11 @@ var defaultOpt *LogOption
 func DefaultLogOption() *LogOption {
 	if defaultOpt == nil {
 		defaultOpt = &LogOption{
-			Active : true,
-			OutputFile : "ketty",
+			OutputFile : "log/ketty",
 			HeaderFormat : "$L $datetime-ms $gid $file:$line] ",
 			RotateCategory : "size",
 			RotateValue : 1912602624, // 1.8 GB
-			RotateSuffixFormat : ".P$pid.$day-$hour-$second.log",
+			RotateSuffixFormat : ".P$pid.$day-$hour-$second",
 		}
 	}
 
