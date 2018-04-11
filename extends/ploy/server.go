@@ -40,9 +40,11 @@ func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, e
 	if err != nil {
 		return
 	}
-	err = server.SetOption(this.opt)
-	if err != nil {
-		return
+	if this.opt != nil {
+		err = server.SetOption(this.opt)
+		if err != nil {
+			return
+		}
 	}
 	err = server.RegisterMethod(h.GetHandle(), implement)
 	if err != nil {
