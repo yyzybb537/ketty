@@ -4,7 +4,7 @@ import (
 	"golang.org/x/net/context"
 	uuid "github.com/satori/go.uuid"
 	"github.com/yyzybb537/gls"
-//	"github.com/yyzybb537/ketty/log"
+	"github.com/yyzybb537/ketty/log"
 )
 
 type TraceAop struct {
