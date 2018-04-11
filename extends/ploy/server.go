@@ -3,6 +3,7 @@ package ploy
 import (
 	"github.com/yyzybb537/ketty"
 	"github.com/yyzybb537/ketty/log"
+	"github.com/yyzybb537/ketty/option"
 	"fmt"
 )
 
@@ -96,6 +97,16 @@ func (this *Server) Serve() (err error){
 			defer log.CleanupGlsDefaultKey(logKey)
 		}
 		err = s.Serve()
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (this *Server) SetOption(opt option.OptionI) (err error){
+	for _, s := range this.servers {
+		err = s.SetOption(opt)
 		if err != nil {
 			return
 		}
