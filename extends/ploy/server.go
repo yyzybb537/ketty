@@ -11,6 +11,7 @@ type Server struct {
 	sUrl		string
 	sDriverUrl	string
 	servers		[]ketty.Server
+	opt			option.OptionI
 	logKeys     []interface{}
 }
 
@@ -39,6 +40,10 @@ func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, e
 	if err != nil {
 		return
 	}
+	err = server.SetOption(this.opt)
+	if err != nil {
+		return
+	}
 	err = server.RegisterMethod(h.GetHandle(), implement)
 	if err != nil {
 		return
@@ -52,6 +57,7 @@ func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, e
 	if ok {
 		i.Init()
 	}
+	
 	this.servers = append(this.servers, server)
 	this.appendLogKeys(implement)
 	return
@@ -105,8 +111,9 @@ func (this *Server) Serve() (err error){
 }
 
 func (this *Server) SetOption(opt option.OptionI) (err error){
+	this.opt = opt
 	for _, s := range this.servers {
-		err = s.SetOption(opt)
+		err = s.SetOption(this.opt)
 		if err != nil {
 			return
 		}
