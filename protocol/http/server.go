@@ -215,16 +215,16 @@ func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Reque
 		ctx = setHttpResponseWriter(ctx, w)
 
 		for _, aop := range aopList {
-			caller, ok := aop.(A.BeforeServerInvokeAop)
+			caller, ok := aop.(A.ServerTransportMetaDataAop)
 			if ok {
-				ctx = caller.BeforeServerInvoke(ctx, req)
+				ctx = caller.ServerRecvMetaData(ctx, metadata)
 			}
 		}
 
 		for _, aop := range aopList {
-			caller, ok := aop.(A.ServerTransportMetaDataAop)
+			caller, ok := aop.(A.BeforeServerInvokeAop)
 			if ok {
-				ctx = caller.ServerRecvMetaData(ctx, metadata)
+				ctx = caller.BeforeServerInvoke(ctx, req)
 			}
 		}
 

@@ -96,16 +96,16 @@ func (this *HttpClient) invoke(inCtx context.Context, handle COM.ServiceHandle, 
 		ctx = setHttpRequest(ctx, httpRequest)
 
 		for _, aop := range aopList {
-			caller, ok := aop.(A.BeforeClientInvokeAop)
+			caller, ok := aop.(A.ClientTransportMetaDataAop)
 			if ok {
-				ctx = caller.BeforeClientInvoke(ctx, req)
+				ctx = caller.ClientSendMetaData(ctx, metadata)
 			}
 		}
 
 		for _, aop := range aopList {
-			caller, ok := aop.(A.ClientTransportMetaDataAop)
+			caller, ok := aop.(A.BeforeClientInvokeAop)
 			if ok {
-				ctx = caller.ClientSendMetaData(ctx, metadata)
+				ctx = caller.BeforeClientInvoke(ctx, req)
 			}
 		}
 

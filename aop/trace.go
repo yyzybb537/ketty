@@ -4,6 +4,7 @@ import (
 	"golang.org/x/net/context"
 	uuid "github.com/satori/go.uuid"
 	"github.com/yyzybb537/gls"
+//	"github.com/yyzybb537/ketty/log"
 )
 
 type TraceAop struct {
@@ -49,6 +50,7 @@ func (this *TraceAop) ClientSendMetaData(ctx context.Context, metadata map[strin
 func (this *TraceAop) ServerRecvMetaData(ctx context.Context, metadata map[string]string) context.Context {
 	traceId, exists := metadata["traceid"]
 	if exists {
+//		log.GetLog().Debugf("set trace id:%s", traceId)
 		gls.Set(traceIdKey{}, traceId)
 		ctx = context.WithValue(ctx, createdTraceIdKey{}, traceId)
 	}
@@ -63,6 +65,7 @@ func genTraceID() (string, bool) {
 		uuid, _ := uuid.NewV4()
 		traceId = uuid.String()
 		gls.Set(traceIdKey{}, traceId)
+		log.GetLog().Debugf("create trace id:%s", traceId)
 		return traceId, true
 	}
 	return traceId, false
