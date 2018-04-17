@@ -3,6 +3,7 @@ package grpc_proto
 import (
 	O "github.com/yyzybb537/ketty/option"
 	"github.com/pkg/errors"
+	"reflect"
 )
 
 type GrpcOption struct {
@@ -16,10 +17,15 @@ func defaultGrpcOption() *GrpcOption {
 func (this *GrpcOption) set(opt O.OptionI) error {
 	if o, ok := opt.(*GrpcOption); ok {
 		*this = *o
+	} else if o, ok := opt.(GrpcOption); ok {
+		*this = o
 	} else if o, ok := opt.(*O.Option); ok {
 		this.Option = *o
+	} else if o, ok := opt.(O.Option); ok {
+		this.Option = o
 	} else {
-		return errors.New("SetOption argument error")
+		typ := reflect.TypeOf(opt)
+		return errors.Errorf("SetOption argument error. opt={isptr:%t, className:%s}", typ.Kind() == reflect.Ptr, typ.String())
 	}
 	return nil
 }

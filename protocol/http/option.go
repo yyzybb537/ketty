@@ -3,6 +3,7 @@ package http_proto
 import (
 	O "github.com/yyzybb537/ketty/option"
 	"github.com/pkg/errors"
+	"reflect"
 )
 
 type HttpOption struct {
@@ -19,10 +20,15 @@ func defaultHttpOption() *HttpOption {
 func (this *HttpOption) set(opt O.OptionI) error {
 	if o, ok := opt.(*HttpOption); ok {
 		*this = *o
+	} else if o, ok := opt.(HttpOption); ok {
+		*this = o
 	} else if o, ok := opt.(*O.Option); ok {
 		this.Option = *o
+	} else if o, ok := opt.(O.Option); ok {
+		this.Option = o
 	} else {
-		return errors.New("SetOption argument error")
+		typ := reflect.TypeOf(opt)
+		return errors.Errorf("SetOption argument error. opt={isptr:%t, className:%s}", typ.Kind() == reflect.Ptr, typ.String())
 	}
 	return nil
 }
