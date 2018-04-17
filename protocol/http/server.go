@@ -241,7 +241,13 @@ func (this *HttpServer) doHandler(fullMethodName string, httpRequest *http.Reque
 			aop := aopList[len(aopList) - i - 1]
 			caller, ok := aop.(A.AfterServerInvokeAop)
 			if ok {
-				defer caller.AfterServerInvoke(&ctx, req, rsp)
+				if _, isException := caller.(*A.ExceptionAop); isException {
+					defer caller.AfterServerInvoke(&ctx, req, rsp)
+				} else {
+					defer func() {
+						caller.AfterServerInvoke(&ctx, req, rsp)
+					}()
+				}
 			}
 		}
 	}
