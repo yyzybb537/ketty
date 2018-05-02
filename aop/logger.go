@@ -37,7 +37,7 @@ func (this *LoggerAop) BeforeServerInvoke(ctx context.Context, req interface{}) 
 }
 
 func (this *LoggerAop) AfterServerInvoke(pCtx *context.Context, req, rsp interface{}) {
-	println("logger.AfterServerInvoke", rsp)
+	//println("logger.AfterServerInvoke", rsp)
 	ctx := *pCtx
 	method := ctx.Value("method")
 	remote := ctx.Value("remote")
