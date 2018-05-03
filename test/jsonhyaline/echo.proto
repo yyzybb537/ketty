@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package main;
+
+import "ketty.proto";
+
+message hyaline {
+    option (json_hyaline) = true;
+
+    repeated int64 val = 1;
+}
+
+message Req {
+    hyaline hy = 1;
+}
+
+message Rsp {
+    int64 val = 1;
+}
+
+service EchoService {
+    rpc Echo(Req) returns(Rsp) {}
+}
+
