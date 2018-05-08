@@ -5,6 +5,8 @@ import (
 	"github.com/yyzybb537/ketty/log"
 	"github.com/yyzybb537/ketty/option"
 	"fmt"
+	"strings"
+	"sync"
 )
 
 type Server struct {
@@ -13,12 +15,18 @@ type Server struct {
 	servers		[]ketty.Server
 	opt			option.OptionI
 	logKeys     []interface{}
+	ifGrpc		bool
+	lock		sync.Mutex
 }
 
 func NewServer(sUrl, sDriverUrl string) (server *Server, err error) {
 	server = &Server{}
 	server.sUrl = sUrl
 	server.sDriverUrl = sDriverUrl
+	//不太优雅，但是ketty库目前没有实现返回server类型接口
+	if strings.Contains(sUrl, "grpc") {
+		server.ifGrpc = true
+	}
 	return
 }
 
@@ -36,16 +44,26 @@ func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, e
 		err = fmt.Errorf("not implement GetHandle")
 		return
 	}
-	server, err := ketty.Listen(this.sUrl + router, this.sDriverUrl)
-	if err != nil {
-		return
-	}
-	if this.opt != nil {
-		err = server.SetOption(this.opt)
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	var server ketty.Server
+	var needAppend bool
+	if this.ifGrpc && len(this.servers) != 0 {
+		server = this.servers[0]
+	}else {
+		server, err = ketty.Listen(this.sUrl + router, this.sDriverUrl)
 		if err != nil {
 			return
 		}
+		if this.opt != nil {
+			err = server.SetOption(this.opt)
+			if err != nil {
+				return
+			}
+		}
+		needAppend = true
 	}
+	
 	err = server.RegisterMethod(h.GetHandle(), implement)
 	if err != nil {
 		return
@@ -60,7 +78,9 @@ func (this *Server) NewFlow(router string, implement interface{}) (flow FlowI, e
 		i.Init()
 	}
 	
-	this.servers = append(this.servers, server)
+	if needAppend {
+		this.servers = append(this.servers, server)
+	}
 	this.appendLogKeys(implement)
 	return
 }
