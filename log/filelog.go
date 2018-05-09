@@ -42,6 +42,7 @@ func (this *FileLog) Clone(opt *LogOption) (LogI, error) {
 	return NewFileLog(opt)
 }
 
+//func (this *FileLog) write(level Level, format string, args ... interface{}) {
 func (this *FileLog) write(level Level, info string) {
 	if this.opt.Ignore {
 		return
@@ -51,9 +52,14 @@ func (this *FileLog) write(level Level, info string) {
 	defer this.mu.Unlock()
 	n := this.opt.WriteHeader(level, 3, this.w)
 	this.nWriteBytes += int64(n)
-	n, _ = this.w.Write([]byte(info))
+	/*if format != "" {
+		n, _ = fmt.Fprintf(this.w, format, args...)
+	}else {
+		n, _ = fmt.Fprintln(this.w, args...)
+	}*/
+	n, _ = this.w.WriteString(info)
 	this.nWriteBytes += int64(n)
-	this.w.Write([]byte("\n"))
+	this.w.WriteByte('\n')
 	this.nWriteBytes += 1
 
 	if this.opt.RotateCategory == "size" {
@@ -150,9 +156,11 @@ func (this *FileLog) goHouseKeeper() {
 }
 
 func (this *FileLog) logf(level Level, format string, args ... interface{}) {
+	//this.write(level, format, args...)
 	this.write(level, fmt.Sprintf(format, args...))
 }
 func (this *FileLog) logln(level Level, args ... interface{}) {
+	//this.write(level, "", args...)
 	this.write(level, fmt.Sprintln(args...))
 }
 func (this *FileLog) Debugf(format string, args ... interface{}) {

@@ -37,6 +37,7 @@ var logBindingsMtx sync.RWMutex
 func init() {
 	LogMgr.Register("std", new(StdLog))
 	LogMgr.Register("file", new(FileLog))
+	LogMgr.Register("fake", new(FakeLog))
 
 	if logger == nil {
 		var err error
