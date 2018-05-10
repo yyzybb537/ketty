@@ -6,18 +6,19 @@ import (
 	"io"
 	"github.com/pkg/errors"
 	"sync"
-	"bufio"
+	"sync/atomic"
 	"time"
 	"path/filepath"
 )
 
+const cBufNumber = 32
 const cBufSize = 256 * 1024
 const cFlushCycle time.Duration = time.Millisecond * 100
 
 type FileLog struct {
 	opt *LogOption
 	f syncWriter
-	w *bufio.Writer
+	w *RingBuf
 	mu sync.Mutex
 	nWriteBytes int64
 }
@@ -30,6 +31,7 @@ type syncWriter interface {
 func NewFileLog(opt *LogOption) (*FileLog, error) {
 	filelg := &FileLog{
 		opt : opt,
+		w : NewRingBuf(cBufNumber, cBufSize),
 	}
 	if err := filelg.reopen(); err != nil {
 		return nil, err
@@ -48,24 +50,15 @@ func (this *FileLog) write(level Level, info string) {
 		return
 	}
 
-	this.mu.Lock()
-	defer this.mu.Unlock()
-	n := this.opt.WriteHeader(level, 3, this.w)
-	this.nWriteBytes += int64(n)
-	/*if format != "" {
-		n, _ = fmt.Fprintf(this.w, format, args...)
-	}else {
-		n, _ = fmt.Fprintln(this.w, args...)
-	}*/
-	n, _ = this.w.WriteString(info)
-	this.nWriteBytes += int64(n)
-	this.w.WriteByte('\n')
-	this.nWriteBytes += 1
-
+	writer := this.w.GetWriter()
+	n1 := this.opt.WriteHeader(level, 3, writer)
+	n2, _ := writer.WriteString(info)
+	writer.WriteString("\n")
+	this.w.Put(writer)
+	
 	if this.opt.RotateCategory == "size" {
-		if this.nWriteBytes >= this.opt.RotateValue {
-			this.nWriteBytes = 0
-			this.rotateWithoutLock()
+		if atomic.AddInt64(&this.nWriteBytes, int64(n1 + n2 + 1)) >= this.opt.RotateValue {
+			this.rotate()
 		}
 	}
 }
@@ -74,7 +67,7 @@ func (this *FileLog) reopen() error {
 	var err error
 	_ = err
 	if this.w != nil {
-		this.w.Flush()
+		this.w.LockFlushTo(this.f)
 	}
 	if this.f != nil {
 		this.f.Sync()
@@ -117,8 +110,6 @@ func (this *FileLog) reopen() error {
 		}
 	}
 
-	this.w = bufio.NewWriterSize(this.f, cBufSize)
-
 	return nil
 }
 
@@ -138,10 +129,8 @@ func (this *FileLog) goHouseKeeper() {
 			time.Sleep(cFlushCycle)
 
 			this.mu.Lock()
-			this.w.Flush()
+			this.w.FlushTo(this.f)
 			this.mu.Unlock()
-
-			this.f.Sync()
 		}
 	}()
 
@@ -201,7 +190,7 @@ func (this *FileLog) Recordln(args ... interface{}) {
 }
 func (this *FileLog) Flush() error {
 	this.mu.Lock()
-	if err := this.w.Flush(); err != nil {
+	if err := this.w.FlushTo(this.f); err != nil {
 		this.mu.Unlock()
 		return err
 	}

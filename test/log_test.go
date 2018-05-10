@@ -26,7 +26,8 @@ func TestLog(t *testing.T) {
 	}
 	log.SetLog(flg)
 	ketty.GetLog().Debugf("file log")
-	time.Sleep(time.Second)
+	log.FlushAll()
+//	time.Sleep(time.Second)
 }
 
 func Benchmark_FileLog(b *testing.B) {
