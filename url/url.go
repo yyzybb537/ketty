@@ -58,7 +58,6 @@ func (this *Addr) ToString() string {
 type Url struct {
 	Protocol string
 	SAddr	 string
-	//Addrs    []Addr
 	Path     string
 	MetaData interface{}
 }
@@ -78,14 +77,6 @@ func UrlFromString(url string) (Url, error) {
 	u.Protocol = matchs[1]
 	u.SAddr = matchs[2]
 	u.Path = matchs[3]
-	//saddrs := strings.Split(u.SAddr, ",")
-	//for _, saddr := range saddrs {
-		//addr, err := AddrFromString(saddr, u.Protocol)
-		//if err != nil {
-			//return nil, err
-		//}
-		//u.Addrs = append(u.Addrs, addr)
-    //}
 	return u, nil
 }
 
@@ -95,6 +86,10 @@ func UrlFromDriverString(url string) (Url, error) {
 
 func (this *Url) GetAddrs() []string {
 	return strings.Split(this.SAddr, ",")
+}
+
+func (this *Url) SetAddrs(ss []string) {
+	this.SAddr = strings.Join(ss, ",")
 }
 
 func (this *Url) GetMainProtocol() string {

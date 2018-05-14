@@ -95,8 +95,33 @@ func (this *EtcdDriver) Register(url, value U.Url) (err error) {
 		return
 	}
 
-	saddr := value.ToDriverString()
+	localIp := sess.GetLocalIp()
+	saddr, err := this.toDriverString(localIp, value)
+	if err != nil {
+		return
+	}
+
 	err = sess.SetEphemeral(url.Path + "/" + saddr, "1", context.Background())
 	return 
 }
 
+func (this *EtcdDriver) toDriverString(localIp string, value U.Url) (s string, err error) {
+	saddrs := value.GetAddrs()
+	newSaddrs := []string{}
+	for _, saddr := range saddrs {
+		var addr U.Addr
+		addr, err = U.AddrFromString(saddr, value.GetMainProtocol())
+		if err != nil {
+			return
+		}
+		switch addr.Host {
+		case "":
+			fallthrough
+		case "0.0.0.0":
+			addr.Host = localIp
+		}
+		newSaddrs = append(newSaddrs, addr.ToString())
+	}
+	value.SetAddrs(newSaddrs)
+	return value.ToDriverString(), nil
+}
