@@ -6,6 +6,7 @@ import (
 	"github.com/yyzybb537/ketty"
 	kettyLog "github.com/yyzybb537/ketty/log"
 	P "github.com/yyzybb537/ketty/protocol"
+	O "github.com/yyzybb537/ketty/option"
 	kettyHttp "github.com/yyzybb537/ketty/protocol/http"
 	"time"
 	context "golang.org/x/net/context"
@@ -58,6 +59,11 @@ func startClient(t *testing.T, sUrl string, exceptError bool) {
 	client, err := ketty.Dial(sUrl, "")
 	if err != nil {
 		t.Fatalf("Dial error:%s", err.Error())
+	}
+
+	err = client.SetOption(&O.Option{TimeoutMilliseconds:2000})
+	if err != nil {
+		t.Fatalf("SetOption error:%s", err.Error())
 	}
 
 	req := &echo.Req{ Val : 123 }
@@ -135,6 +141,8 @@ func TestEtcd(t *testing.T) {
 	startServer(t, sUrl, driverUrl)
 	time.Sleep(time.Millisecond * 100)
 	startClient(t, driverUrl, false)
+
+	startClient(t, driverUrl + "/none", true)
 }
 
 

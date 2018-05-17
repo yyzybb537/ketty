@@ -224,7 +224,11 @@ func (this *Clients) SetOption(opt O.OptionI) error {
 func (this *Clients) Invoke(ctx context.Context, handle COM.ServiceHandle, method string, req, rsp interface{}) error {
 	url, put, err := this.balancer.Get(ctx)
 	if err != nil {
-		this.blockingWait.Wait()
+		if this.opt != nil {
+			this.blockingWait.TimedWait(time.Millisecond * time.Duration(this.opt.(*O.Option).TimeoutMilliseconds))
+		} else {
+			this.blockingWait.Wait()
+		}
 		url, put, err = this.balancer.Get(ctx)
 		if err != nil {
 			return err
